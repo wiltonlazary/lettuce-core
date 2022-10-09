@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package io.lettuce.core.support;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
-import io.lettuce.core.internal.AsyncCloseable;
+import io.lettuce.core.api.AsyncCloseable;
 
 /**
  * Interface declaring non-blocking object pool methods allowing to {@link #acquire()} and {@link #release(Object)} objects. All

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,11 @@
 package io.lettuce.core.cluster;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import io.lettuce.core.internal.LettuceAssert;
@@ -422,7 +426,7 @@ public class ClusterTopologyRefreshOptions {
      * a refresh if the reconnect process tries at least {@code refreshTriggersReconnectAttempts}. See
      * {@link #DEFAULT_REFRESH_TRIGGERS_RECONNECT_ATTEMPTS}.
      *
-     * @return umber of reconnect attempts for a connection before a n adaptive topology refresh is triggered
+     * @return number of reconnect attempts for a connection before an adaptive topology refresh is triggered
      */
     public int getRefreshTriggersReconnectAttempts() {
         return refreshTriggersReconnectAttempts;

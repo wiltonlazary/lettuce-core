@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,10 +31,12 @@ public abstract class TestSupport {
     public static final String host = TestSettings.hostAddr();
     public static final int port = TestSettings.port();
     public static final String username = TestSettings.username();
-    public static final String passwd = TestSettings.password();
+
+    public static final CharSequence passwd = TestSettings.password();
 
     public static final String aclUsername = TestSettings.aclUsername();
-    public static final String aclPasswd = TestSettings.aclPassword();
+
+    public static final CharSequence aclPasswd = TestSettings.aclPassword();
 
     public static final String key = "key";
     public static final String value = "value";
@@ -51,7 +53,7 @@ public abstract class TestSupport {
         return Arrays.asList(args);
     }
 
-    protected static KeyValue<String, String> kv(String key, String value) {
+    protected static <K, V> KeyValue<K, V> kv(K key, V value) {
         return KeyValue.fromNullable(key, value);
     }
 

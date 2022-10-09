@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ import io.lettuce.core.tracing.TraceContextProvider;
 import io.lettuce.core.tracing.Tracing;
 import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.concurrent.ImmediateEventExecutor;
+
 /**
  * A reactive and thread-safe API for a Redis connection.
  *
@@ -66,12 +67,12 @@ import io.netty.util.concurrent.ImmediateEventExecutor;
  * @author Andrey Shlykov
  * @since 4.0
  */
-public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclReactiveCommands<K, V>,
-        RedisHashReactiveCommands<K, V>, RedisKeyReactiveCommands<K, V>, RedisStringReactiveCommands<K, V>,
-        RedisListReactiveCommands<K, V>, RedisSetReactiveCommands<K, V>, RedisSortedSetReactiveCommands<K, V>,
-        RedisScriptingReactiveCommands<K, V>, RedisServerReactiveCommands<K, V>, RedisHLLReactiveCommands<K, V>,
-        BaseRedisReactiveCommands<K, V>, RedisTransactionalReactiveCommands<K, V>, RedisGeoReactiveCommands<K, V>,
-        RedisClusterReactiveCommands<K, V> {
+public abstract class AbstractRedisReactiveCommands<K, V>
+        implements RedisAclReactiveCommands<K, V>, RedisHashReactiveCommands<K, V>, RedisKeyReactiveCommands<K, V>,
+        RedisStringReactiveCommands<K, V>, RedisListReactiveCommands<K, V>, RedisSetReactiveCommands<K, V>,
+        RedisSortedSetReactiveCommands<K, V>, RedisScriptingReactiveCommands<K, V>, RedisServerReactiveCommands<K, V>,
+        RedisHLLReactiveCommands<K, V>, BaseRedisReactiveCommands<K, V>, RedisTransactionalReactiveCommands<K, V>,
+        RedisGeoReactiveCommands<K, V>, RedisClusterReactiveCommands<K, V> {
 
     private final StatefulConnection<K, V> connection;
 
@@ -125,6 +126,16 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     public Mono<Long> aclDeluser(String... usernames) {
         return createMono(() -> commandBuilder.aclDeluser(usernames));
+    }
+
+    @Override
+    public Mono<String> aclDryRun(String username, String command, String... args) {
+        return createMono(() -> commandBuilder.aclDryRun(username, command, args));
+    }
+
+    @Override
+    public Mono<String> aclDryRun(String username, RedisCommand<K, V, ?> command) {
+        return createMono(() -> commandBuilder.aclDryRun(username, command));
     }
 
     @Override
@@ -278,6 +289,16 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<KeyValue<K, List<V>>> blmpop(long timeout, LMPopArgs args, K... keys) {
+        return createMono(() -> commandBuilder.blmpop(timeout, args, keys));
+    }
+
+    @Override
+    public Mono<KeyValue<K, List<V>>> blmpop(double timeout, LMPopArgs args, K... keys) {
+        return createMono(() -> commandBuilder.blmpop(timeout, args, keys));
+    }
+
+    @Override
     public Mono<KeyValue<K, V>> blpop(long timeout, K... keys) {
         return createMono(() -> commandBuilder.blpop(timeout, keys));
     }
@@ -338,6 +359,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<String> clientNoEvict(boolean on) {
+        return createMono(() -> commandBuilder.clientNoEvict(on));
+    }
+
+    @Override
     public Mono<Long> clientId() {
         return createMono(commandBuilder::clientId);
     }
@@ -372,6 +398,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<String> clusterAddSlotsRange(Range<Integer>... ranges) {
+        return createMono(() -> commandBuilder.clusterAddSlotsRange(ranges));
+    }
+
+    @Override
     public Mono<String> clusterBumpepoch() {
         return createMono(() -> commandBuilder.clusterBumpepoch());
     }
@@ -389,6 +420,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     public Mono<String> clusterDelSlots(int... slots) {
         return createMono(() -> commandBuilder.clusterDelslots(slots));
+    }
+
+    @Override
+    public Mono<String> clusterDelSlotsRange(Range<Integer>... ranges) {
+        return createMono(() -> commandBuilder.clusterDelSlotsRange(ranges));
     }
 
     @Override
@@ -442,6 +478,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Flux<String> clusterReplicas(String nodeId) {
+        return createDissolvingFlux(() -> commandBuilder.clusterReplicas(nodeId));
+    }
+
+    @Override
     public Mono<String> clusterReset(boolean hard) {
         return createMono(() -> commandBuilder.clusterReset(hard));
     }
@@ -474,6 +515,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     public Mono<String> clusterSetSlotStable(int slot) {
         return createMono(() -> commandBuilder.clusterSetSlotStable(slot));
+    }
+
+    @Override
+    public Mono<List<Object>> clusterShards() {
+        return createMono(() -> commandBuilder.clusterShards());
     }
 
     @Override
@@ -517,6 +563,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<Map<String, String>> configGet(String... parameters) {
+        return createMono(() -> commandBuilder.configGet(parameters));
+    }
+
+    @Override
     public Mono<String> configResetstat() {
         return createMono(commandBuilder::configResetstat);
     }
@@ -529,6 +580,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     public Mono<String> configSet(String parameter, String value) {
         return createMono(() -> commandBuilder.configSet(parameter, value));
+    }
+
+    @Override
+    public Mono<String> configSet(Map<String, String> kvs) {
+        return createMono(() -> commandBuilder.configSet(kvs));
     }
 
     @SuppressWarnings("unchecked")
@@ -657,7 +713,7 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
         return createMono(commandBuilder::discard);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
     public <T> Flux<T> dispatch(ProtocolKeyword type, CommandOutput<K, V, ?> output) {
 
@@ -667,7 +723,7 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
         return (Flux) createFlux(() -> new Command<>(type, output));
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
     public <T> Flux<T> dispatch(ProtocolKeyword type, CommandOutput<K, V, ?> output, CommandArgs<K, V> args) {
 
@@ -697,7 +753,7 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     @SuppressWarnings("unchecked")
     public <T> Flux<T> eval(byte[] script, ScriptOutputType type, K... keys) {
-        return (Flux<T>) createFlux(() -> commandBuilder.eval(script, type, keys));
+        return createFlux(() -> commandBuilder.eval(script, type, keys));
     }
 
     @Override
@@ -709,19 +765,29 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     @SuppressWarnings("unchecked")
     public <T> Flux<T> eval(byte[] script, ScriptOutputType type, K[] keys, V... values) {
-        return (Flux<T>) createFlux(() -> commandBuilder.eval(script, type, keys, values));
+        return createFlux(() -> commandBuilder.eval(script, type, keys, values));
+    }
+
+    @Override
+    public <T> Flux<T> evalReadOnly(byte[] script, ScriptOutputType type, K[] keys, V... values) {
+        return createFlux(() -> commandBuilder.eval(script, type, true, keys, values));
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public <T> Flux<T> evalsha(String digest, ScriptOutputType type, K... keys) {
-        return (Flux<T>) createFlux(() -> commandBuilder.evalsha(digest, type, keys));
+        return createFlux(() -> commandBuilder.evalsha(digest, type, keys));
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public <T> Flux<T> evalsha(String digest, ScriptOutputType type, K[] keys, V... values) {
-        return (Flux<T>) createFlux(() -> commandBuilder.evalsha(digest, type, keys, values));
+        return createFlux(() -> commandBuilder.evalsha(digest, type, keys, values));
+    }
+
+    @Override
+    public <T> Flux<T> evalshaReadOnly(String digest, ScriptOutputType type, K[] keys, V... values) {
+        return createFlux(() -> commandBuilder.evalsha(digest, type, true, keys, values));
     }
 
     @Override
@@ -744,30 +810,60 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
 
     @Override
     public Mono<Boolean> expire(K key, long seconds) {
-        return createMono(() -> commandBuilder.expire(key, seconds));
+        return expire(key, seconds, null);
+    }
+
+    @Override
+    public Mono<Boolean> expire(K key, long seconds, ExpireArgs expireArgs) {
+        return createMono(() -> commandBuilder.expire(key, seconds, expireArgs));
     }
 
     @Override
     public Mono<Boolean> expire(K key, Duration seconds) {
+        return expire(key, seconds, null);
+    }
+
+    @Override
+    public Mono<Boolean> expire(K key, Duration seconds, ExpireArgs expireArgs) {
         LettuceAssert.notNull(seconds, "Timeout must not be null");
-        return expire(key, seconds.toMillis() / 1000);
+        return expire(key, seconds.toMillis() / 1000, expireArgs);
     }
 
     @Override
     public Mono<Boolean> expireat(K key, long timestamp) {
-        return createMono(() -> commandBuilder.expireat(key, timestamp));
+        return expireat(key, timestamp, null);
+    }
+
+    @Override
+    public Mono<Boolean> expireat(K key, long timestamp, ExpireArgs expireArgs) {
+        return createMono(() -> commandBuilder.expireat(key, timestamp, expireArgs));
     }
 
     @Override
     public Mono<Boolean> expireat(K key, Date timestamp) {
+        return expireat(key, timestamp, null);
+    }
+
+    @Override
+    public Mono<Boolean> expireat(K key, Date timestamp, ExpireArgs expireArgs) {
         LettuceAssert.notNull(timestamp, "Timestamp must not be null");
-        return expireat(key, timestamp.getTime() / 1000);
+        return expireat(key, timestamp.getTime() / 1000, expireArgs);
     }
 
     @Override
     public Mono<Boolean> expireat(K key, Instant timestamp) {
+        return expireat(key, timestamp, null);
+    }
+
+    @Override
+    public Mono<Boolean> expireat(K key, Instant timestamp, ExpireArgs expireArgs) {
         LettuceAssert.notNull(timestamp, "Timestamp must not be null");
-        return expireat(key, timestamp.toEpochMilli() / 1000);
+        return expireat(key, timestamp.toEpochMilli() / 1000, expireArgs);
+    }
+
+    @Override
+    public Mono<Long> expiretime(K key) {
+        return createMono(() -> commandBuilder.expiretime(key));
     }
 
     @Override
@@ -1178,6 +1274,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<KeyValue<K, List<V>>> lmpop(LMPopArgs args, K... keys) {
+        return createMono(() -> commandBuilder.lmpop(args, keys));
+    }
+
+    @Override
     public Mono<V> lpop(K key) {
         return createMono(() -> commandBuilder.lpop(key));
     }
@@ -1326,28 +1427,60 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
 
     @Override
     public Mono<Boolean> pexpire(K key, long milliseconds) {
-        return createMono(() -> commandBuilder.pexpire(key, milliseconds));
+        return pexpire(key, milliseconds, null);
+    }
+
+    @Override
+    public Mono<Boolean> pexpire(K key, long milliseconds, ExpireArgs expireArgs) {
+        return createMono(() -> commandBuilder.pexpire(key, milliseconds, expireArgs));
     }
 
     @Override
     public Mono<Boolean> pexpire(K key, Duration milliseconds) {
-        LettuceAssert.notNull(milliseconds, "Timeout must not be null");
-        return pexpire(key, milliseconds.toMillis());
+        return pexpire(key, milliseconds, null);
     }
 
     @Override
-    public Mono<Boolean> pexpireat(K key, long timestamp) {
-        return createMono(() -> commandBuilder.pexpireat(key, timestamp));
+    public Mono<Boolean> pexpire(K key, Duration milliseconds, ExpireArgs expireArgs) {
+        LettuceAssert.notNull(milliseconds, "Timeout must not be null");
+        return pexpire(key, milliseconds.toMillis(), expireArgs);
     }
 
     @Override
     public Mono<Boolean> pexpireat(K key, Date timestamp) {
-        return pexpireat(key, timestamp.getTime());
+        return pexpireat(key, timestamp, null);
+    }
+
+    @Override
+    public Mono<Boolean> pexpireat(K key, Date timestamp, ExpireArgs expireArgs) {
+        LettuceAssert.notNull(timestamp, "Timestamp must not be null");
+        return pexpireat(key, timestamp.getTime(), expireArgs);
     }
 
     @Override
     public Mono<Boolean> pexpireat(K key, Instant timestamp) {
-        return pexpireat(key, timestamp.toEpochMilli());
+        return pexpireat(key, timestamp, null);
+    }
+
+    @Override
+    public Mono<Boolean> pexpireat(K key, Instant timestamp, ExpireArgs expireArgs) {
+        LettuceAssert.notNull(timestamp, "Timestamp must not be null");
+        return pexpireat(key, timestamp.toEpochMilli(), expireArgs);
+    }
+
+    @Override
+    public Mono<Boolean> pexpireat(K key, long timestamp) {
+        return pexpireat(key, timestamp, null);
+    }
+
+    @Override
+    public Mono<Boolean> pexpireat(K key, long timestamp, ExpireArgs expireArgs) {
+        return createMono(() -> commandBuilder.pexpireat(key, timestamp, expireArgs));
+    }
+
+    @Override
+    public Mono<Long> pexpiretime(K key) {
+        return createMono(() -> commandBuilder.pexpiretime(key));
     }
 
     @Override
@@ -1445,6 +1578,16 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     public Mono<Boolean> renamenx(K key, K newKey) {
         return createMono(() -> commandBuilder.renamenx(key, newKey));
+    }
+
+    @Override
+    public Mono<String> replicaof(String host, int port) {
+        return createMono(() -> commandBuilder.replicaof(host, port));
+    }
+
+    @Override
+    public Mono<String> replicaofNoOne() {
+        return createMono(() -> commandBuilder.replicaofNoOne());
     }
 
     @Override
@@ -1621,6 +1764,7 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
         connection.setAutoFlushCommands(autoFlush);
     }
 
+    @Override
     public void setTimeout(Duration timeout) {
         connection.setTimeout(timeout);
     }
@@ -1651,6 +1795,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<Void> shutdown(ShutdownArgs args) {
+        return createMono(() -> commandBuilder.shutdown(args)).then();
+    }
+
+    @Override
     public Flux<V> sinter(K... keys) {
         return createDissolvingFlux(() -> commandBuilder.sinter(keys));
     }
@@ -1658,6 +1807,16 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     public Mono<Long> sinter(ValueStreamingChannel<V> channel, K... keys) {
         return createMono(() -> commandBuilder.sinter(channel, keys));
+    }
+
+    @Override
+    public Mono<Long> sintercard(K... keys) {
+        return createMono(() -> commandBuilder.sintercard(keys));
+    }
+
+    @Override
+    public Mono<Long> sintercard(long limit, K... keys) {
+        return createMono(() -> commandBuilder.sintercard(limit, keys));
     }
 
     @Override
@@ -1738,6 +1897,26 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     @Override
     public Mono<Long> sort(ValueStreamingChannel<V> channel, K key, SortArgs sortArgs) {
         return createMono(() -> commandBuilder.sort(channel, key, sortArgs));
+    }
+
+    @Override
+    public Flux<V> sortReadOnly(K key) {
+        return createDissolvingFlux(() -> commandBuilder.sortReadOnly(key));
+    }
+
+    @Override
+    public Mono<Long> sortReadOnly(ValueStreamingChannel<V> channel, K key) {
+        return createMono(() -> commandBuilder.sortReadOnly(channel, key));
+    }
+
+    @Override
+    public Flux<V> sortReadOnly(K key, SortArgs sortArgs) {
+        return createDissolvingFlux(() -> commandBuilder.sortReadOnly(key, sortArgs));
+    }
+
+    @Override
+    public Mono<Long> sortReadOnly(ValueStreamingChannel<V> channel, K key, SortArgs sortArgs) {
+        return createMono(() -> commandBuilder.sortReadOnly(channel, key, sortArgs));
     }
 
     @Override
@@ -2183,6 +2362,16 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<Long> zintercard(K... keys) {
+        return createMono(() -> commandBuilder.zintercard(keys));
+    }
+
+    @Override
+    public Mono<Long> zintercard(long limit, K... keys) {
+        return createMono(() -> commandBuilder.zintercard(limit, keys));
+    }
+
+    @Override
     public Flux<ScoredValue<V>> zinterWithScores(K... keys) {
         return createDissolvingFlux(() -> commandBuilder.zinterWithScores(keys));
     }
@@ -2421,6 +2610,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     }
 
     @Override
+    public Mono<Long> zrangestore(K dstKey, K srcKey, Range<Long> range) {
+        return createMono(() -> commandBuilder.zrangestore(dstKey, srcKey, range, false));
+    }
+
+    @Override
     public Mono<Long> zrangestorebylex(K dstKey, K srcKey, Range<? extends V> range, Limit limit) {
         return createMono(() -> commandBuilder.zrangestorebylex(dstKey, srcKey, range, limit, false));
     }
@@ -2623,6 +2817,11 @@ public abstract class AbstractRedisReactiveCommands<K, V> implements RedisAclRea
     public Mono<Long> zrevrangebyscoreWithScores(ScoredValueStreamingChannel<V> channel, K key, Range<? extends Number> range,
             Limit limit) {
         return createMono(() -> commandBuilder.zrevrangebyscoreWithScores(channel, key, range, limit));
+    }
+
+    @Override
+    public Mono<Long> zrevrangestore(K dstKey, K srcKey, Range<Long> range) {
+        return createMono(() -> commandBuilder.zrangestore(dstKey, srcKey, range, true));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,6 +104,14 @@ public interface CommandLatencyCollectorOptions {
     boolean isEnabled();
 
     /**
+     * Returns whether PauseDetector is enabled. Defaults to no pause detector.
+     *
+     * @return {@code true} if the PauseDetector is enabled
+     * @since 6.1.7
+     */
+    boolean usePauseDetector();
+
+    /**
      * Builder for {@link CommandLatencyCollectorOptions}.
      *
      * @since 5.1
@@ -125,7 +133,24 @@ public interface CommandLatencyCollectorOptions {
         Builder enable();
 
         /**
-         * Enables per connection metrics tracking insead of per host/port. If {@code true}, multiple connections to the same
+         * Use {@code LatencyUtils.SimplePauseDetector} to detect pauses. Defaults to no pause detector.
+         *
+         * @return this {@link DefaultCommandLatencyCollectorOptions.Builder}.
+         * @since 6.1.7
+         * @see org.LatencyUtils.SimplePauseDetector
+         */
+        Builder usePauseDetector();
+
+        /**
+         * Do not detect pauses. Defaults to no pause detector.
+         *
+         * @return this {@link DefaultCommandLatencyCollectorOptions.Builder}.
+         * @since 6.1.7
+         */
+        Builder useNoPauseDetector();
+
+        /**
+         * Enables per connection metrics tracking instead of per host/port. If {@code true}, multiple connections to the same
          * host/connection point will be recorded separately which allows to inspect every connection individually. If
          * {@code false}, multiple connections to the same host/connection point will be recorded together. This allows a
          * consolidated view on one particular service. Defaults to {@code false}. See

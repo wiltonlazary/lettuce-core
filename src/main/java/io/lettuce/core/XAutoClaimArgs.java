@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import io.lettuce.core.protocol.CommandArgs;
 import io.lettuce.core.protocol.CommandKeyword;
 
 /**
- * Argument list builder for the Redis <a href="http://redis.io/commands/xautoclaim">XAUTOCLAIM</a> command. Static import the
+ * Argument list builder for the Redis <a href="https://redis.io/commands/xautoclaim">XAUTOCLAIM</a> command. Static import the
  * methods from {@link XAutoClaimArgs.Builder} and call the methods: {@code xautoclaim(…)} .
  * <p>
  * {@link XAutoClaimArgs} is a mutable object and instances should be used only once to avoid shared mutable state.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,9 +94,11 @@ class ReadFromImpl {
     }
 
     /**
-     * Read from nearest node.
+     * Read from the node with the lowest latency during topology discovery. Note that latency measurements are momentary
+     * snapshots that can change in rapid succession. Requires dynamic refresh sources to obtain topologies and latencies from
+     * all nodes in the cluster.
      */
-    static final class ReadFromNearest extends ReadFrom {
+    static final class ReadFromLowestCommandLatency extends ReadFrom {
 
         @Override
         public List<RedisNodeDescription> select(Nodes nodes) {

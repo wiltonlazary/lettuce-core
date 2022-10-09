@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -178,7 +178,7 @@ class BraveTracingIntegrationTests extends TestSupport {
 
         StatefulRedisConnection<String, String> connect = client.connect();
         connect.reactive().ping() //
-                .subscriberContext(it -> it.put(TraceContext.class, trace.context())) //
+                .contextWrite(it -> it.put(TraceContext.class, trace.context())) //
                 .as(StepVerifier::create) //
                 .expectNext("PONG").verifyComplete();
 
@@ -200,7 +200,7 @@ class BraveTracingIntegrationTests extends TestSupport {
         StatefulRedisConnection<String, String> connect = client.connect();
         connect.reactive().set("foo", "bar") //
                 .then(connect.reactive().get("foo")) //
-                .subscriberContext(it -> it.put(TraceContext.class, trace.context())) //
+                .contextWrite(it -> it.put(TraceContext.class, trace.context())) //
                 .as(StepVerifier::create) //
                 .expectNext("bar").verifyComplete();
 
@@ -224,8 +224,7 @@ class BraveTracingIntegrationTests extends TestSupport {
 
         StatefulRedisConnection<String, String> connect = client.connect();
         connect.reactive().set("foo", "bar").then(connect.reactive().get("foo"))
-                .subscriberContext(io.lettuce.core.tracing.Tracing
-                        .withTraceContextProvider(() -> BraveTracing.BraveTraceContext.create(trace.context()))) //
+                .contextWrite(io.lettuce.core.tracing.Tracing.withTraceContextProvider(() -> BraveTracing.BraveTraceContext.create(trace.context()))) //
                 .as(StepVerifier::create) //
                 .expectNext("bar").verifyComplete();
 

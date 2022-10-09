@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.util.Map;
 import io.lettuce.core.FlushMode;
 import io.lettuce.core.KillArgs;
 import io.lettuce.core.RedisFuture;
+import io.lettuce.core.ShutdownArgs;
 import io.lettuce.core.TrackingArgs;
 import io.lettuce.core.UnblockType;
 import io.lettuce.core.protocol.CommandType;
@@ -109,6 +110,15 @@ public interface RedisServerAsyncCommands<K, V> {
     RedisFuture<String> clientList();
 
     /**
+     * Sets the client eviction mode for the current connection.
+     *
+     * @param on {@code true} will turn eviction mode on, and {@code false} will turn it off.
+     * @return String simple-string-reply {@code OK}.
+     * @since 6.2
+     */
+    RedisFuture<String> clientNoEvict(boolean on);
+
+    /**
      * Stop processing commands from clients for some time.
      *
      * @param timeout the timeout value in milliseconds.
@@ -183,6 +193,15 @@ public interface RedisServerAsyncCommands<K, V> {
     RedisFuture<Map<String, String>> configGet(String parameter);
 
     /**
+     * Get the value of multiple pattern parameters.
+     *
+     * @param parameters patterns names of Redis server's configuration.
+     * @return Map&lt;String, String&gt; bulk-string-reply.
+     * @since 6.2
+     */
+    RedisFuture<Map<String, String>> configGet(String... parameters);
+
+    /**
      * Reset the stats returned by INFO.
      *
      * @return String simple-string-reply always {@code OK}.
@@ -205,6 +224,15 @@ public interface RedisServerAsyncCommands<K, V> {
      * @return String simple-string-reply: {@code OK} when the configuration was set properly. Otherwise an error is returned.
      */
     RedisFuture<String> configSet(String parameter, String value);
+
+    /**
+     * Set multiple parameters to the given value.
+     *
+     * @param kvs the parameter name and value.
+     * @return String simple-string-reply: {@code OK} when the configuration was set properly. Otherwise an error is returned.
+     * @since 6.2
+     */
+    RedisFuture<String> configSet(Map<String, String> kvs);
 
     /**
      * Return the number of keys in the selected database.
@@ -355,6 +383,24 @@ public interface RedisServerAsyncCommands<K, V> {
     RedisFuture<Long> memoryUsage(K key);
 
     /**
+     * Make the server a replica of another instance.
+     *
+     * @param host the host type: string.
+     * @param port the port type: string.
+     * @return String simple-string-reply.
+     * @since 6.1.7
+     */
+    RedisFuture<String> replicaof(String host, int port);
+
+    /**
+     * Promote server as master.
+     *
+     * @return String simple-string-reply.
+     * @since 6.1.7
+     */
+    RedisFuture<String> replicaofNoOne();
+
+    /**
      * Synchronously save the dataset to disk.
      *
      * @return String simple-string-reply The commands returns OK on success.
@@ -369,11 +415,20 @@ public interface RedisServerAsyncCommands<K, V> {
     void shutdown(boolean save);
 
     /**
-     * Make the server a replica of another instance, or promote it as master.
+     * Synchronously save the dataset to disk and then shutdown the server.
+     *
+     * @param args
+     * @since 6.2
+     */
+    void shutdown(ShutdownArgs args);
+
+    /**
+     * Make the server a replica of another instance.
      *
      * @param host the host type: string.
      * @param port the port type: string.
      * @return String simple-string-reply.
+     * @deprecated since 6.1.7, use {@link #replicaof(String, int)} instead.
      */
     RedisFuture<String> slaveof(String host, int port);
 
@@ -381,6 +436,7 @@ public interface RedisServerAsyncCommands<K, V> {
      * Promote server as master.
      *
      * @return String simple-string-reply.
+     * @deprecated since 6.1.7, use {@link #replicaofNoOne()} instead.
      */
     RedisFuture<String> slaveofNoOne();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,21 @@
  */
 package io.lettuce.core.cluster.topology;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyLong;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -69,6 +74,7 @@ class ClusterTopologyRefreshUnitTests {
 
     private static final String NODE_1_VIEW = "1 127.0.0.1:7380 master,myself - 0 1401258245007 2 disconnected 8000-11999\n"
             + "2 127.0.0.1:7381 master - 111 1401258245007 222 connected 7000 12000 12002-16383\n";
+
     private static final String NODE_2_VIEW = "1 127.0.0.1:7380 master - 0 1401258245007 2 disconnected 8000-11999\n"
             + "2 127.0.0.1:7381 master,myself - 111 1401258245007 222 connected 7000 12000 12002-16383\n";
 
@@ -109,6 +115,11 @@ class ClusterTopologyRefreshUnitTests {
         when(clientResources.timer()).thenReturn(timer);
         when(clientResources.socketAddressResolver()).thenReturn(SocketAddressResolver.create(DnsResolver.unresolved()));
         when(clientResources.eventExecutorGroup()).thenReturn(eventExecutors);
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArgument(0)).run();
+            return null;
+        }).when(eventExecutors).execute(any(Runnable.class));
+
         when(connection1.async()).thenReturn(asyncCommands1);
         when(connection2.async()).thenReturn(asyncCommands2);
         when(connection1.closeAsync()).thenReturn(CompletableFuture.completedFuture(null));
@@ -207,7 +218,7 @@ class ClusterTopologyRefreshUnitTests {
 
         sut.loadViews(seed, Duration.ofSeconds(1), true);
 
-        verifyZeroInteractions(nodeConnectionFactory);
+        verifyNoInteractions(nodeConnectionFactory);
     }
 
     @Test
@@ -270,7 +281,7 @@ class ClusterTopologyRefreshUnitTests {
     }
 
     @Test
-    void getNodeSpecificViewsNode2IsFasterThanNode1() throws Exception {
+    void getNodeSpecificViewsNode2IsFasterThanNode1() {
 
         Requests clusterNodesRequests = createClusterNodesRequests(5, NODE_1_VIEW);
         clusterNodesRequests = createClusterNodesRequests(1, NODE_2_VIEW).mergeWith(clusterNodesRequests);
@@ -294,10 +305,10 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedWithException(new RedisException("connection failed")));
+                        .thenReturn(completedWithException(new RedisException("connection failed")));
 
         sut.loadViews(seed, Duration.ofSeconds(1), true);
 
@@ -341,10 +352,10 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedWithException(new RedisException("connection failed")));
+                        .thenReturn(completedWithException(new RedisException("connection failed")));
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedWithException(new RedisException("connection failed")));
+                        .thenReturn(completedWithException(new RedisException("connection failed")));
 
         try {
             sut.loadViews(seed, Duration.ofSeconds(1), true).toCompletableFuture().join();
@@ -368,10 +379,10 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection2));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection2));
 
         sut.loadViews(seed, Duration.ofSeconds(1), true);
 
@@ -388,7 +399,7 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
 
         sut.loadViews(seed, Duration.ofSeconds(1), false);
 
@@ -405,11 +416,11 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection2));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection2));
 
         sut.loadViews(seed, Duration.ofSeconds(1), true);
 
@@ -426,10 +437,10 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection2));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection2));
 
         sut.loadViews(seed, Duration.ofSeconds(1), true);
 
@@ -444,7 +455,7 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
 
         Map<RedisURI, Partitions> partitionsMap = sut.loadViews(seed, Duration.ofSeconds(1), false).toCompletableFuture()
                 .join();
@@ -464,10 +475,10 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection2));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection2));
 
         Map<RedisURI, Partitions> partitionsMap = sut.loadViews(seed, Duration.ofSeconds(1), true).toCompletableFuture().join();
 
@@ -475,7 +486,7 @@ class ClusterTopologyRefreshUnitTests {
 
         List<RedisClusterNode> nodes = TopologyComparators.sortByClientCount(partitions);
 
-        assertThat(nodes).hasSize(2).extracting(RedisClusterNode::getUri).containsSequence(RedisURI.create("127.0.0.1", 7381),
+        assertThat(nodes).hasSize(2).extracting(RedisClusterNode::getUri).contains(RedisURI.create("127.0.0.1", 7381),
                 seed.get(0));
     }
 
@@ -486,7 +497,7 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
 
         Map<RedisURI, Partitions> partitionsMap = sut.loadViews(seed, Duration.ofSeconds(1), false).toCompletableFuture()
                 .join();
@@ -506,10 +517,10 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection2));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection2));
 
         Map<RedisURI, Partitions> partitionsMap = sut.loadViews(seed, Duration.ofSeconds(1), true).toCompletableFuture().join();
 
@@ -517,7 +528,7 @@ class ClusterTopologyRefreshUnitTests {
 
         List<RedisClusterNode> nodes = TopologyComparators.sortByLatency(partitions);
 
-        assertThat(nodes).hasSize(2).extracting(RedisClusterNode::getUri).containsSequence(RedisURI.create("127.0.0.1", 7381),
+        assertThat(nodes).hasSize(2).extracting(RedisClusterNode::getUri).contains(RedisURI.create("127.0.0.1", 7381),
                 seed.get(0));
     }
 
@@ -528,10 +539,10 @@ class ClusterTopologyRefreshUnitTests {
 
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7380))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection1));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection1));
         when(nodeConnectionFactory.connectToNodeAsync(any(RedisCodec.class),
                 eq(InetSocketAddress.createUnresolved("127.0.0.1", 7381))))
-                .thenReturn(completedFuture((StatefulRedisConnection) connection2));
+                        .thenReturn(completedFuture((StatefulRedisConnection) connection2));
 
         reset(connection1, connection2);
 
@@ -613,4 +624,5 @@ class ClusterTopologyRefreshUnitTests {
 
         return ConnectionFuture.from(InetSocketAddress.createUnresolved(TestSettings.host(), TestSettings.port()), future);
     }
+
 }

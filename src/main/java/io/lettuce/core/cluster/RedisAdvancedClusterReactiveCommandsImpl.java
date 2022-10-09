@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,21 +34,11 @@ import org.reactivestreams.Publisher;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import io.lettuce.core.AbstractRedisReactiveCommands;
-import io.lettuce.core.GeoArgs;
-import io.lettuce.core.GeoWithin;
-import io.lettuce.core.KeyScanCursor;
-import io.lettuce.core.KeyValue;
-import io.lettuce.core.RedisException;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.ScanArgs;
-import io.lettuce.core.ScanCursor;
-import io.lettuce.core.StreamScanCursor;
+import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.reactive.RedisKeyReactiveCommands;
 import io.lettuce.core.api.reactive.RedisScriptingReactiveCommands;
 import io.lettuce.core.api.reactive.RedisServerReactiveCommands;
-import io.lettuce.core.cluster.ClusterConnectionProvider.Intent;
 import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
 import io.lettuce.core.cluster.api.reactive.RedisAdvancedClusterReactiveCommands;
 import io.lettuce.core.cluster.api.reactive.RedisClusterReactiveCommands;
@@ -58,6 +48,7 @@ import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.internal.LettuceLists;
 import io.lettuce.core.output.KeyStreamingChannel;
 import io.lettuce.core.output.KeyValueStreamingChannel;
+import io.lettuce.core.protocol.ConnectionIntent;
 
 /**
  * An advanced reactive and thread-safe API to a Redis Cluster connection.
@@ -210,6 +201,13 @@ public class RedisAdvancedClusterReactiveCommandsImpl<K, V> extends AbstractRedi
     }
 
     @Override
+    public Mono<String> flushall(FlushMode flushMode) {
+
+        Map<String, Publisher<String>> publishers = executeOnUpstream(it -> it.flushall(flushMode));
+        return Flux.merge(publishers.values()).last();
+    }
+
+    @Override
     public Mono<String> flushallAsync() {
 
         Map<String, Publisher<String>> publishers = executeOnUpstream(RedisServerReactiveCommands::flushallAsync);
@@ -220,6 +218,13 @@ public class RedisAdvancedClusterReactiveCommandsImpl<K, V> extends AbstractRedi
     public Mono<String> flushdb() {
 
         Map<String, Publisher<String>> publishers = executeOnUpstream(RedisServerReactiveCommands::flushdb);
+        return Flux.merge(publishers.values()).last();
+    }
+
+    @Override
+    public Mono<String> flushdb(FlushMode flushMode) {
+
+        Map<String, Publisher<String>> publishers = executeOnUpstream(it -> it.flushdb(flushMode));
         return Flux.merge(publishers.values()).last();
     }
 
@@ -348,6 +353,11 @@ public class RedisAdvancedClusterReactiveCommandsImpl<K, V> extends AbstractRedi
     public Mono<K> randomkey() {
 
         Partitions partitions = getStatefulConnection().getPartitions();
+
+        if (partitions.isEmpty()) {
+            return super.randomkey();
+        }
+
         int index = ThreadLocalRandom.current().nextInt(partitions.size());
 
         Mono<RedisClusterReactiveCommands<K, V>> connection = getConnectionReactive(partitions.getPartition(index).getNodeId());
@@ -430,7 +440,7 @@ public class RedisAdvancedClusterReactiveCommandsImpl<K, V> extends AbstractRedi
     }
 
     private Mono<RedisClusterReactiveCommands<K, V>> getConnectionReactive(String nodeId) {
-        return getMono(getConnectionProvider().<K, V> getConnectionAsync(Intent.WRITE, nodeId))
+        return getMono(getConnectionProvider().<K, V> getConnectionAsync(ConnectionIntent.WRITE, nodeId))
                 .map(StatefulRedisConnection::reactive);
     }
 
@@ -440,7 +450,7 @@ public class RedisAdvancedClusterReactiveCommandsImpl<K, V> extends AbstractRedi
     }
 
     private Mono<RedisClusterReactiveCommands<K, V>> getConnectionReactive(String host, int port) {
-        return getMono(getConnectionProvider().<K, V> getConnectionAsync(Intent.WRITE, host, port))
+        return getMono(getConnectionProvider().<K, V> getConnectionAsync(ConnectionIntent.WRITE, host, port))
                 .map(StatefulRedisConnection::reactive);
     }
 
@@ -590,7 +600,7 @@ public class RedisAdvancedClusterReactiveCommandsImpl<K, V> extends AbstractRedi
         String currentNodeId = ClusterScanSupport.getCurrentNodeId(cursor, nodeIds);
         ScanCursor continuationCursor = ClusterScanSupport.getContinuationCursor(cursor);
 
-        Mono<T> scanCursor = getMono(connectionProvider.<K, V> getConnectionAsync(Intent.WRITE, currentNodeId))
+        Mono<T> scanCursor = getMono(connectionProvider.<K, V> getConnectionAsync(ConnectionIntent.WRITE, currentNodeId))
                 .flatMap(conn -> scanFunction.apply(conn.reactive(), continuationCursor));
         return mapper.map(nodeIds, currentNodeId, scanCursor);
     }

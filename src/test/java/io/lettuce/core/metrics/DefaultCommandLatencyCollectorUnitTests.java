@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,18 @@
  */
 package io.lettuce.core.metrics;
 
-import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
+import static java.util.concurrent.TimeUnit.*;
+import static org.assertj.core.api.Assertions.*;
 
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import io.lettuce.test.ReflectionTestUtils;
 
 import io.lettuce.core.metrics.DefaultCommandLatencyCollector.PauseDetectorWrapper;
 import io.lettuce.core.protocol.CommandType;
+import io.lettuce.test.ReflectionTestUtils;
 import io.netty.channel.local.LocalAddress;
 
 /**
@@ -93,7 +92,8 @@ class DefaultCommandLatencyCollectorUnitTests {
     @Test
     void verifyMetrics() {
 
-        sut = new DefaultCommandLatencyCollector(DefaultCommandLatencyCollectorOptions.create());
+        sut = new DefaultCommandLatencyCollector(DefaultCommandLatencyCollectorOptions
+                .builder().usePauseDetector().build());
 
         setupData();
 
@@ -128,6 +128,7 @@ class DefaultCommandLatencyCollectorUnitTests {
     void verifyCummulativeMetrics() {
 
         sut = new DefaultCommandLatencyCollector(DefaultCommandLatencyCollectorOptions.builder()
+                .usePauseDetector()
                 .resetLatenciesAfterEvent(false).build());
 
         setupData();

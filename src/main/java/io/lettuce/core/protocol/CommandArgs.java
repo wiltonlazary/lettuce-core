@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
-import io.lettuce.core.internal.LettuceStrings;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.codec.ToByteBufEncoder;
 import io.lettuce.core.internal.LettuceAssert;
+import io.lettuce.core.internal.LettuceStrings;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.UnpooledByteBufAllocator;
 
@@ -277,6 +277,20 @@ public class CommandArgs<K, V> {
         return this;
     }
 
+    /**
+     * Add all arguments from {@link CommandArgs}
+     *
+     * @param args the args, must not be {@code null}
+     * @return the command args.
+     * @since 6.2
+     */
+    public CommandArgs<K, V> addAll(CommandArgs<?, ?> args) {
+
+        LettuceAssert.notNull(args, "CommandArgs must not be null");
+        this.singularArguments.addAll(args.singularArguments);
+        return this;
+    }
+
     @Override
     public String toString() {
 
@@ -497,7 +511,7 @@ public class CommandArgs<K, V> {
                 return IntegerCache.cache[(int) val];
             }
 
-            if (val < 0 && -val < IntegerCache.cache.length) {
+            if (val < 0 && val > Integer.MIN_VALUE && -val < IntegerCache.cache.length) {
                 return IntegerCache.negativeCache[(int) -val];
             }
 

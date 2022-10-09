@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package io.lettuce.core;
 
 import io.lettuce.core.*;
 import io.lettuce.core.protocol.CommandType;
+import io.lettuce.core.protocol.RedisCommand;
 
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,27 @@ public interface RedisAclCommands<K, V> {
      * @return Long The number of users that were deleted
      */
     Long aclDeluser(String... usernames);
+
+    /**
+     * Simulate the execution of a given command by a given user.
+     *
+     * @param username the specified username
+     * @param command the specified command
+     * @param args the specified args of command
+     * @return String reply: OK on success.
+     * @since 6.2
+     */
+    String aclDryRun(String username, String command, String... args);
+
+    /**
+     * Simulate the execution of a given command by a given user.
+     *
+     * @param username the specified username
+     * @param command the specified command to inspect
+     * @return String reply: OK on success.
+     * @since 6.2
+     */
+    String aclDryRun(String username, RedisCommand<K, V, ?> command);
 
     /**
      * The command generates a password.

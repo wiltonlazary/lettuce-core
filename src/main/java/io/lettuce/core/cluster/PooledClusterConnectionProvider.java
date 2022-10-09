@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,11 @@
  */
 package io.lettuce.core.cluster;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -23,7 +27,14 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import io.lettuce.core.*;
+import io.lettuce.core.ConnectionFuture;
+import io.lettuce.core.OrderingReadFromAccessor;
+import io.lettuce.core.ReadFrom;
+import io.lettuce.core.RedisChannelWriter;
+import io.lettuce.core.RedisConnectionException;
+import io.lettuce.core.RedisException;
+import io.lettuce.core.RedisFuture;
+import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.push.PushMessage;
@@ -32,8 +43,13 @@ import io.lettuce.core.cluster.api.push.RedisClusterPushListener;
 import io.lettuce.core.cluster.models.partitions.Partitions;
 import io.lettuce.core.cluster.models.partitions.RedisClusterNode;
 import io.lettuce.core.codec.RedisCodec;
-import io.lettuce.core.internal.*;
+import io.lettuce.core.internal.AsyncConnectionProvider;
+import io.lettuce.core.internal.Exceptions;
+import io.lettuce.core.internal.Futures;
+import io.lettuce.core.internal.HostAndPort;
+import io.lettuce.core.internal.LettuceAssert;
 import io.lettuce.core.models.role.RedisNodeDescription;
+import io.lettuce.core.protocol.ConnectionIntent;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -110,23 +126,23 @@ class PooledClusterConnectionProvider<K, V>
     }
 
     @Override
-    public StatefulRedisConnection<K, V> getConnection(Intent intent, int slot) {
+    public StatefulRedisConnection<K, V> getConnection(ConnectionIntent connectionIntent, int slot) {
 
         try {
-            return getConnectionAsync(intent, slot).get();
+            return getConnectionAsync(connectionIntent, slot).get();
         } catch (Exception e) {
             throw Exceptions.bubble(e);
         }
     }
 
     @Override
-    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(Intent intent, int slot) {
+    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(ConnectionIntent connectionIntent, int slot) {
 
         if (debugEnabled) {
-            logger.debug("getConnection(" + intent + ", " + slot + ")");
+            logger.debug("getConnection(" + connectionIntent + ", " + slot + ")");
         }
 
-        if (intent == Intent.READ && readFrom != null && readFrom != ReadFrom.UPSTREAM) {
+        if (connectionIntent == ConnectionIntent.READ && readFrom != null && readFrom != ReadFrom.UPSTREAM) {
             return getReadConnection(slot);
         }
 
@@ -141,8 +157,8 @@ class PooledClusterConnectionProvider<K, V>
         }
 
         if (writer == null) {
-            RedisClusterNode partition = partitions.getPartitionBySlot(slot);
-            if (partition == null) {
+            RedisClusterNode master = partitions.getMasterBySlot(slot);
+            if (master == null) {
                 clusterEventListener.onUncoveredSlot(slot);
                 return Futures.failed(new PartitionSelectorException("Cannot determine a partition for slot " + slot + ".",
                         partitions.clone()));
@@ -150,8 +166,8 @@ class PooledClusterConnectionProvider<K, V>
 
             // Use always host and port for slot-oriented operations. We don't want to get reconnected on a different
             // host because the nodeId can be handled by a different host.
-            RedisURI uri = partition.getUri();
-            ConnectionKey key = new ConnectionKey(Intent.WRITE, uri.getHost(), uri.getPort());
+            RedisURI uri = master.getUri();
+            ConnectionKey key = new ConnectionKey(ConnectionIntent.WRITE, uri.getHost(), uri.getPort());
 
             ConnectionFuture<StatefulRedisConnection<K, V>> future = getConnectionAsync(key);
 
@@ -182,14 +198,14 @@ class PooledClusterConnectionProvider<K, V>
 
         if (readerCandidates == null) {
 
-            RedisClusterNode upstream = partitions.getPartitionBySlot(slot);
-            if (upstream == null) {
+            RedisClusterNode master = partitions.getMasterBySlot(slot);
+            if (master == null) {
                 clusterEventListener.onUncoveredSlot(slot);
                 return Futures.failed(new PartitionSelectorException(
                         String.format("Cannot determine a partition to read for slot %d.", slot), partitions.clone()));
             }
 
-            List<RedisNodeDescription> candidates = getReadCandidates(upstream);
+            List<RedisNodeDescription> candidates = getReadCandidates(master);
             List<RedisNodeDescription> selection = readFrom.select(new ReadFrom.Nodes() {
 
                 @Override
@@ -352,8 +368,9 @@ class PooledClusterConnectionProvider<K, V>
             RedisNodeDescription redisClusterNode = selection.get(i);
 
             RedisURI uri = redisClusterNode.getUri();
-            ConnectionKey key = new ConnectionKey(redisClusterNode.getRole().isUpstream() ? Intent.WRITE : Intent.READ,
-                    uri.getHost(), uri.getPort());
+            ConnectionKey key = new ConnectionKey(
+                    redisClusterNode.getRole().isUpstream() ? ConnectionIntent.WRITE : ConnectionIntent.READ, uri.getHost(),
+                    uri.getPort());
 
             readerCandidates[i] = getConnectionAsync(key).toCompletableFuture();
         }
@@ -368,28 +385,39 @@ class PooledClusterConnectionProvider<K, V>
                 .collect(Collectors.toList());
     }
 
-    private boolean isReadCandidate(RedisClusterNode upstream, RedisClusterNode partition) {
-        return upstream.getNodeId().equals(partition.getNodeId()) || upstream.getNodeId().equals(partition.getSlaveOf());
+    private static boolean isReadCandidate(RedisClusterNode upstream, RedisClusterNode partition) {
+
+        if (upstream.getNodeId().equals(partition.getNodeId())) {
+            return true;
+        }
+
+        // consider only replicas contain data from replication
+        if (upstream.getNodeId().equals(partition.getSlaveOf()) && partition.getReplOffset() != 0) {
+            return true;
+        }
+
+        return false;
     }
 
     @Override
-    public StatefulRedisConnection<K, V> getConnection(Intent intent, String nodeId) {
+    public StatefulRedisConnection<K, V> getConnection(ConnectionIntent connectionIntent, String nodeId) {
 
         if (debugEnabled) {
-            logger.debug("getConnection(" + intent + ", " + nodeId + ")");
+            logger.debug("getConnection(" + connectionIntent + ", " + nodeId + ")");
         }
 
-        return getConnection(new ConnectionKey(intent, nodeId));
+        return getConnection(new ConnectionKey(connectionIntent, nodeId));
     }
 
     @Override
-    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(Intent intent, String nodeId) {
+    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(ConnectionIntent connectionIntent,
+            String nodeId) {
 
         if (debugEnabled) {
-            logger.debug("getConnection(" + intent + ", " + nodeId + ")");
+            logger.debug("getConnection(" + connectionIntent + ", " + nodeId + ")");
         }
 
-        return getConnectionAsync(new ConnectionKey(intent, nodeId)).toCompletableFuture();
+        return getConnectionAsync(new ConnectionKey(connectionIntent, nodeId)).toCompletableFuture();
     }
 
     protected ConnectionFuture<StatefulRedisConnection<K, V>> getConnectionAsync(ConnectionKey key) {
@@ -415,12 +443,12 @@ class PooledClusterConnectionProvider<K, V>
 
     @Override
     @SuppressWarnings({ "unchecked", "hiding", "rawtypes" })
-    public StatefulRedisConnection<K, V> getConnection(Intent intent, String host, int port) {
+    public StatefulRedisConnection<K, V> getConnection(ConnectionIntent connectionIntent, String host, int port) {
 
         try {
-            beforeGetConnection(intent, host, port);
+            beforeGetConnection(connectionIntent, host, port);
 
-            return getConnection(new ConnectionKey(intent, host, port));
+            return getConnection(new ConnectionKey(connectionIntent, host, port));
         } catch (RedisException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -440,12 +468,13 @@ class PooledClusterConnectionProvider<K, V>
     }
 
     @Override
-    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(Intent intent, String host, int port) {
+    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(ConnectionIntent connectionIntent, String host,
+            int port) {
 
         try {
-            beforeGetConnection(intent, host, port);
+            beforeGetConnection(connectionIntent, host, port);
 
-            return connectionProvider.getConnection(new ConnectionKey(intent, host, port)).toCompletableFuture();
+            return connectionProvider.getConnection(new ConnectionKey(connectionIntent, host, port)).toCompletableFuture();
         } catch (RedisException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -453,10 +482,10 @@ class PooledClusterConnectionProvider<K, V>
         }
     }
 
-    private void beforeGetConnection(Intent intent, String host, int port) {
+    private void beforeGetConnection(ConnectionIntent connectionIntent, String host, int port) {
 
         if (debugEnabled) {
-            logger.debug("getConnection(" + intent + ", " + host + ", " + port + ")");
+            logger.debug("getConnection(" + connectionIntent + ", " + host + ", " + port + ")");
         }
 
         RedisClusterNode redisClusterNode = partitions.getPartition(host, port);
@@ -671,7 +700,7 @@ class PooledClusterConnectionProvider<K, V>
 
             LettuceAssert.notNull(connection, "Connection is null. Check ConnectionKey because host and nodeId are null.");
 
-            if (key.intent == Intent.READ) {
+            if (key.connectionIntent == ConnectionIntent.READ) {
 
                 connection = connection.thenCompose(c -> {
 

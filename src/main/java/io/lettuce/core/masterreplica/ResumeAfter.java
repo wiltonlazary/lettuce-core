@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package io.lettuce.core.masterreplica;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import reactor.core.publisher.Mono;
-import io.lettuce.core.internal.AsyncCloseable;
+import io.lettuce.core.api.AsyncCloseable;
 
 /**
  * Utility to resume a {@link org.reactivestreams.Publisher} after termination.

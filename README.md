@@ -1,7 +1,6 @@
 <img src="https://avatars2.githubusercontent.com/u/25752188?v=4" width="50" height="50"> Lettuce - Advanced Java Redis client
 ===============================
 
-[![Build Status](https://app.travis-ci.com/lettuce-io/lettuce-core.svg)](https://travis-ci.com/lettuce-io/lettuce-core) [![codecov](https://codecov.io/gh/lettuce-io/lettuce-core/branch/main/graph/badge.svg)](https://codecov.io/gh/lettuce-io/lettuce-core)
  [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.lettuce/lettuce-core/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.lettuce/lettuce-core)
 
 Lettuce is a scalable thread-safe Redis client for synchronous,
@@ -41,7 +40,7 @@ Documentation
 
 * [Reference documentation](https://lettuce.io/docs/)
 * [Wiki](https://github.com/lettuce-io/lettuce-core/wiki)
-* [Javadoc](http://redis.paluch.biz/docs/api/releases/latest/)
+* [Javadoc](https://lettuce.io/core/release/api/)
 
 
 Binaries/Download

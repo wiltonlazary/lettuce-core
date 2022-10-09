@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import io.lettuce.core.protocol.CommandKeyword;
 import io.lettuce.core.protocol.CommandType;
 
 /**
- * Argument list builder for the Redis <a href="http://redis.io/commands/xclaim">XCLAIM</a> command. Static import the methods
+ * Argument list builder for the Redis <a href="https://redis.io/commands/xclaim">XCLAIM</a> command. Static import the methods
  * from {@link XClaimArgs.Builder} and call the methods: {@code minIdleTime(…)} .
  * <p>
  * {@link XClaimArgs} is a mutable object and instances should be used only once to avoid shared mutable state.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,18 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 
-import io.lettuce.core.*;
+import io.lettuce.core.RedisBusyException;
+import io.lettuce.core.RedisCommandExecutionException;
+import io.lettuce.core.RedisCommandTimeoutException;
+import io.lettuce.core.RedisLoadingException;
+import io.lettuce.core.RedisNoScriptException;
+import io.lettuce.core.RedisReadOnlyException;
 
 /**
  * Factory for Redis exceptions.
  *
  * @author Mark Paluch
+ * @author Tobias Nehrlich
  * @since 4.5
  */
 public abstract class ExceptionFactory {
@@ -132,6 +138,10 @@ public abstract class ExceptionFactory {
 
             if (message.startsWith("LOADING")) {
                 return cause != null ? new RedisLoadingException(message, cause) : new RedisLoadingException(message);
+            }
+
+            if (message.startsWith("READONLY")) {
+                return cause != null ? new RedisReadOnlyException(message, cause) : new RedisReadOnlyException(message);
             }
 
             return cause != null ? new RedisCommandExecutionException(message, cause)

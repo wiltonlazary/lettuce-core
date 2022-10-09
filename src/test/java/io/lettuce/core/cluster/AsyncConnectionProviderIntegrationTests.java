@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,7 @@
  */
 package io.lettuce.core.cluster;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -42,6 +41,7 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.cluster.ClusterNodeConnectionFactory.ConnectionKey;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.internal.AsyncConnectionProvider;
+import io.lettuce.core.protocol.ConnectionIntent;
 import io.lettuce.core.protocol.ProtocolVersion;
 import io.lettuce.core.resource.ClientResources;
 import io.lettuce.test.LettuceExtension;
@@ -99,7 +99,7 @@ class AsyncConnectionProviderIntegrationTests {
     @Test
     void shouldCloseConnectionByKey() throws IOException {
 
-        ConnectionKey connectionKey = new ConnectionKey(ClusterConnectionProvider.Intent.READ, TestSettings.host(),
+        ConnectionKey connectionKey = new ConnectionKey(ConnectionIntent.READ, TestSettings.host(),
                 TestSettings.port());
 
         sut.getConnection(connectionKey);
@@ -114,7 +114,7 @@ class AsyncConnectionProviderIntegrationTests {
     @Test
     void shouldCloseConnections() throws IOException {
 
-        ConnectionKey connectionKey = new ConnectionKey(ClusterConnectionProvider.Intent.READ, TestSettings.host(),
+        ConnectionKey connectionKey = new ConnectionKey(ConnectionIntent.READ, TestSettings.host(),
                 TestSettings.port());
 
         sut.getConnection(connectionKey);
@@ -136,7 +136,7 @@ class AsyncConnectionProviderIntegrationTests {
 
         client.setOptions(clientOptions);
 
-        ConnectionKey connectionKey = new ConnectionKey(ClusterConnectionProvider.Intent.READ, "8.8.8.8", TestSettings.port());
+        ConnectionKey connectionKey = new ConnectionKey(ConnectionIntent.READ, "8.8.8.8", TestSettings.port());
 
         StopWatch stopWatch = new StopWatch();
 
@@ -169,7 +169,7 @@ class AsyncConnectionProviderIntegrationTests {
 
         client.setOptions(clientOptions);
 
-        ConnectionKey connectionKey = new ConnectionKey(ClusterConnectionProvider.Intent.READ, "8.8.8.8", TestSettings.port());
+        ConnectionKey connectionKey = new ConnectionKey(ConnectionIntent.READ, "8.8.8.8", TestSettings.port());
 
         Thread t1 = new Thread(() -> {
             try {

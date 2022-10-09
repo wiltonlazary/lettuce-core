@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,18 @@
  */
 package io.lettuce.core.models.stream;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import io.lettuce.core.Range;
 import io.lettuce.core.internal.LettuceAssert;
 
 /**
- * Parser for redis <a href="http://redis.io/commands/xpending">XPENDING</a> command output.
+ * Parser for redis <a href="https://redis.io/commands/xpending">XPENDING</a> command output.
  *
  * @author Mark Paluch
  * @since 5.1

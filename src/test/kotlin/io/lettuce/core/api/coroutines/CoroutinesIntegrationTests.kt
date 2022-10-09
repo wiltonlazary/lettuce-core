@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import io.lettuce.core.cluster.api.coroutines
 import io.lettuce.core.sentinel.SentinelTestSettings
 import io.lettuce.core.sentinel.api.coroutines
 import io.lettuce.test.LettuceExtension
+import io.lettuce.test.condition.EnabledOnCommand
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -68,6 +69,7 @@ class CoroutinesIntegrationTests : TestSupport() {
     }
 
     @Test
+    @EnabledOnCommand("EXPIRETIME") // Redis 7.0
     @Inject
     internal fun shouldInvokeCoroutineCorrectlyForSentinel(client: RedisClient) {
 
@@ -78,7 +80,7 @@ class CoroutinesIntegrationTests : TestSupport() {
             val api = connection.coroutines()
 
             assertThat(api.master(SentinelTestSettings.MASTER_ID)).isNotEmpty
-            assertThat(api.slaves(SentinelTestSettings.MASTER_ID)).isNotEmpty
+            assertThat(api.replicas(SentinelTestSettings.MASTER_ID)).isNotEmpty
         }
 
         connection.close()

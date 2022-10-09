@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,30 @@ package io.lettuce.core.cluster;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.function.BiPredicate;
 
 /**
  * Circular element provider. This class allows infinite scrolling over a collection with the possibility to provide an initial
  * offset.
  *
  * @author Mark Paluch
+ * @author Christian Lang
  */
 class RoundRobin<V> {
 
     protected volatile Collection<? extends V> collection = Collections.emptyList();
 
     protected volatile V offset;
+
+    private final BiPredicate<V, V> isEqual;
+
+    public RoundRobin() {
+        this((a, b) -> true);
+    }
+
+    public RoundRobin(BiPredicate<V, V> hasElementChanged) {
+        this.isEqual = hasElementChanged;
+    }
 
     /**
      * Return whether this {@link RoundRobin} is still consistent and contains all items from the leader {@link Collection} and
@@ -42,7 +54,31 @@ class RoundRobin<V> {
 
         Collection<? extends V> collection = this.collection;
 
-        return collection.containsAll(leader) && leader.containsAll(collection);
+        if (collection.size() != leader.size()) {
+            return false;
+        }
+
+        for (V currentElement : collection) {
+
+            boolean found = find(leader, currentElement);
+
+            if (!found) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean find(Collection<? extends V> hayStack, V needle) {
+
+        for (V searchedElement : hayStack) {
+            if (searchedElement.equals(needle)) {
+                return isEqual.test(needle, searchedElement);
+            }
+        }
+
+        return false;
     }
 
     /**

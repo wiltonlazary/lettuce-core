@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,28 @@ interface RedisSetCoroutinesCommands<K : Any, V : Any> {
      * @return Set<V> array-reply list with members of the resulting set.
      */
     fun sinter(vararg keys: K): Flow<V>
+
+    /**
+     * This command works exactly like {@link #sinter(Any[])} but instead of returning the result set, it returns
+     * just the cardinality of the result.
+     *
+     * @param keys the keys.
+     * @return The cardinality of the set which would result from the intersection of all the given sets.
+     * @since 6.2
+     */
+    suspend fun sintercard(vararg keys: K): Long?
+
+    /**
+     * This command works exactly like {@link #sinter(Any[])} but instead of returning the result set, it returns
+     * just the cardinality of the result.
+     *
+     * @param limit If the intersection cardinality reaches limit partway through the computation, the algorithm will exit and
+     *        yield limit as the cardinality.
+     * @param keys the keys.
+     * @return The cardinality of the set which would result from the intersection of all the given sets.
+     * @since 6.2
+     */
+    suspend fun sintercard(limit: Long, vararg keys: K): Long?
 
     /**
      * Intersect multiple sets and store the resulting set in a key.

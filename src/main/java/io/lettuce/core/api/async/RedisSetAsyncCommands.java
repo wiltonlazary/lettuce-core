@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,11 @@ package io.lettuce.core.api.async;
 import java.util.List;
 import java.util.Set;
 
-import io.lettuce.core.*;
+import io.lettuce.core.RedisFuture;
+import io.lettuce.core.ScanArgs;
+import io.lettuce.core.ScanCursor;
+import io.lettuce.core.StreamScanCursor;
+import io.lettuce.core.ValueScanCursor;
 import io.lettuce.core.output.ValueStreamingChannel;
 
 /**
@@ -93,6 +97,28 @@ public interface RedisSetAsyncCommands<K, V> {
      * @return Long count of members of the resulting set.
      */
     RedisFuture<Long> sinter(ValueStreamingChannel<V> channel, K... keys);
+
+    /**
+     * This command works exactly like {@link #sinter(java.lang.Object[])} but instead of returning the result set, it returns
+     * just the cardinality of the result.
+     *
+     * @param keys the keys.
+     * @return The cardinality of the set which would result from the intersection of all the given sets.
+     * @since 6.2
+     */
+    RedisFuture<Long> sintercard(K... keys);
+
+    /**
+     * This command works exactly like {@link #sinter(java.lang.Object[])} but instead of returning the result set, it returns
+     * just the cardinality of the result.
+     *
+     * @param limit If the intersection cardinality reaches limit partway through the computation, the algorithm will exit and
+     *        yield limit as the cardinality.
+     * @param keys the keys.
+     * @return The cardinality of the set which would result from the intersection of all the given sets.
+     * @since 6.2
+     */
+    RedisFuture<Long> sintercard(long limit, K... keys);
 
     /**
      * Intersect multiple sets and store the resulting set in a key.

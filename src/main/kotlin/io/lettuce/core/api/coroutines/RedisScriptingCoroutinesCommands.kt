@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +82,24 @@ interface RedisScriptingCoroutinesCommands<K : Any, V : Any> {
     suspend fun <T> eval(script: ByteArray, type: ScriptOutputType, keys: Array<K>, vararg values: V): T?
 
     /**
+     * This is a read-only variant of the EVAL command that cannot execute commands that modify data.
+     *
+     * @param script Lua 5.1 script.
+     * @param type the type.
+     * @param keys the keys.
+     * @param values the values.
+     * @param <T> expected return type.
+     * @return script result.
+     * @since 6.2
+     */
+    suspend fun <T> evalReadOnly(
+        script: ByteArray,
+        type: ScriptOutputType,
+        keys: Array<K>,
+        vararg values: V
+    ): T?
+
+    /**
      * Evaluates a script cached on the server side by its SHA1 digest.
      *
      * @param digest SHA1 of the script.
@@ -103,6 +121,24 @@ interface RedisScriptingCoroutinesCommands<K : Any, V : Any> {
      * @return script result.
      */
     suspend fun <T> evalsha(digest: String, type: ScriptOutputType, keys: Array<K>, vararg values: V): T?
+
+    /**
+     * This is a read-only variant of the EVALSHA command that cannot execute commands that modify data.
+     *
+     * @param digest SHA1 of the script.
+     * @param type the type.
+     * @param keys the keys.
+     * @param values the values.
+     * @param <T> expected return type.
+     * @return script result.
+     * @since 6.2
+     */
+    suspend fun <T> evalshaReadOnly(
+        digest: String,
+        type: ScriptOutputType,
+        keys: Array<K>,
+        vararg values: V
+    ): T?
 
     /**
      * Check existence of scripts in the script cache.

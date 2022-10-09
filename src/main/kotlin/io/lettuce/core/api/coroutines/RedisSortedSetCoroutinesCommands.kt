@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -254,6 +254,28 @@ interface RedisSortedSetCoroutinesCommands<K : Any, V : Any> {
     fun zinter(aggregateArgs: ZAggregateArgs, vararg keys: K): Flow<V>
 
     /**
+     * This command is similar to {@link #zinter(Any[])}, but instead of returning the result set, it returns just
+     * the cardinality of the result.
+     *
+     * @param keys the keys.
+     * @return Long Integer reply the number of elements in the resulting intersection.
+     * @since 6.2
+     */
+    suspend fun zintercard(vararg keys: K): Long?
+
+    /**
+     * This command is similar to {@link #zinter(Any[])}, but instead of returning the result set, it returns just
+     * the cardinality of the result.
+     *
+     * @param limit If the intersection cardinality reaches limit partway through the computation, the algorithm will exit and
+     *        yield limit as the cardinality
+     * @param keys the keys.
+     * @return Long Integer reply the number of elements in the resulting intersection.
+     * @since 6.2
+     */
+    suspend fun zintercard(limit: Long, vararg keys: K): Long?
+
+    /**
      * Intersect multiple sorted sets and returns the resulting sorted.
      *
      * @param aggregateArgs arguments to define aggregation and weights.
@@ -471,7 +493,22 @@ interface RedisSortedSetCoroutinesCommands<K : Any, V : Any> {
      * @return List<ScoredValue<V>> array-reply list of elements in the specified score range.
      * @since 4.3
      */
-    fun zrangebyscoreWithScores(key: K, range: Range<out Number>, limit: Limit): Flow<ScoredValue<V>>
+    fun zrangebyscoreWithScores(
+        key: K,
+        range: Range<out Number>,
+        limit: Limit
+    ): Flow<ScoredValue<V>>
+
+    /**
+     * Get the specified range of elements in the sorted set stored at `srcKey` and stores the result in the `dstKey` destination key.
+     *
+     * @param dstKey the dst key.
+     * @param srcKey the src key.
+     * @param range the rank.
+     * @return the number of elements in the resulting sorted set.
+     * @since 6.2.1
+     */
+    suspend fun zrangestore(dstKey: K, srcKey: K, range: Range<Long>): Long?
 
     /**
      * Get the specified range of elements in the sorted set stored at `srcKey` and stores the result in the `dstKey` destination key.
@@ -479,7 +516,8 @@ interface RedisSortedSetCoroutinesCommands<K : Any, V : Any> {
      * @param dstKey the dst key.
      * @param srcKey the src key.
      * @param range the lexicographical range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     suspend fun zrangestorebylex(dstKey: K, srcKey: K, range: Range<out V>, limit: Limit): Long?
@@ -490,7 +528,8 @@ interface RedisSortedSetCoroutinesCommands<K : Any, V : Any> {
      * @param dstKey the dst key.
      * @param srcKey the src key.
      * @param range the score range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     suspend fun zrangestorebyscore(dstKey: K, srcKey: K, range: Range<out Number>, limit: Limit): Long?
@@ -627,7 +666,22 @@ interface RedisSortedSetCoroutinesCommands<K : Any, V : Any> {
      * @return List<V> array-reply list of elements in the specified score range.
      * @since 4.3
      */
-    fun zrevrangebyscoreWithScores(key: K, range: Range<out Number>, limit: Limit): Flow<ScoredValue<V>>
+    fun zrevrangebyscoreWithScores(
+        key: K,
+        range: Range<out Number>,
+        limit: Limit
+    ): Flow<ScoredValue<V>>
+
+    /**
+     * Get the specified range of elements ordered from high to low in the sorted set stored at `srcKey` and stores the result in the `dstKey` destination key.
+     *
+     * @param dstKey the dst key.
+     * @param srcKey the src key.
+     * @param range the rank.
+     * @return the number of elements in the resulting sorted set.
+     * @since 6.2.1
+     */
+    suspend fun zrevrangestore(dstKey: K, srcKey: K, range: Range<Long>): Long?
 
     /**
      * Get the lexicographical range ordered from high to low of elements in the sorted set stored at `srcKey` and stores the result in the `dstKey` destination key.
@@ -635,7 +689,8 @@ interface RedisSortedSetCoroutinesCommands<K : Any, V : Any> {
      * @param dstKey the src key.
      * @param srcKey the dst key.
      * @param range the lexicographical range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     suspend fun zrevrangestorebylex(dstKey: K, srcKey: K, range: Range<out V>, limit: Limit): Long?
@@ -646,7 +701,8 @@ interface RedisSortedSetCoroutinesCommands<K : Any, V : Any> {
      * @param dstKey the src key.
      * @param srcKey the dst key.
      * @param range the score range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     suspend fun zrevrangestorebyscore(dstKey: K, srcKey: K, range: Range<out Number>, limit: Limit): Long?

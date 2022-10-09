@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,22 +33,12 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import io.lettuce.core.AbstractRedisAsyncCommands;
-import io.lettuce.core.GeoArgs;
-import io.lettuce.core.GeoWithin;
-import io.lettuce.core.KeyScanCursor;
-import io.lettuce.core.KeyValue;
-import io.lettuce.core.RedisFuture;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.ScanArgs;
-import io.lettuce.core.ScanCursor;
-import io.lettuce.core.StreamScanCursor;
+import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.async.RedisKeyAsyncCommands;
 import io.lettuce.core.api.async.RedisScriptingAsyncCommands;
 import io.lettuce.core.api.async.RedisServerAsyncCommands;
-import io.lettuce.core.cluster.ClusterScanSupport.*;
 import io.lettuce.core.cluster.api.NodeSelectionSupport;
 import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
 import io.lettuce.core.cluster.api.async.AsyncNodeSelection;
@@ -64,6 +54,7 @@ import io.lettuce.core.output.KeyValueStreamingChannel;
 import io.lettuce.core.protocol.AsyncCommand;
 import io.lettuce.core.protocol.Command;
 import io.lettuce.core.protocol.CommandType;
+import io.lettuce.core.protocol.ConnectionIntent;
 
 /**
  * An advanced asynchronous and thread-safe API for a Redis Cluster connection.
@@ -223,6 +214,12 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
     }
 
     @Override
+    public RedisFuture<String> flushall(FlushMode flushMode) {
+        return MultiNodeExecution.firstOfAsync(
+                executeOnUpstream(kvRedisClusterAsyncCommands -> kvRedisClusterAsyncCommands.flushall(flushMode)));
+    }
+
+    @Override
     public RedisFuture<String> flushallAsync() {
         return MultiNodeExecution.firstOfAsync(executeOnUpstream(RedisServerAsyncCommands::flushallAsync));
     }
@@ -230,6 +227,12 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
     @Override
     public RedisFuture<String> flushdb() {
         return MultiNodeExecution.firstOfAsync(executeOnUpstream(RedisServerAsyncCommands::flushdb));
+    }
+
+    @Override
+    public RedisFuture<String> flushdb(FlushMode flushMode) {
+        return MultiNodeExecution
+                .firstOfAsync(executeOnUpstream(kvRedisClusterAsyncCommands -> kvRedisClusterAsyncCommands.flushdb(flushMode)));
     }
 
     @Override
@@ -288,8 +291,18 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
             return super.mget(keys);
         }
 
+        // For a given partition, maps the key to its index within the List<K> in partitioned for faster lookups below
+        Map<Integer, Map<K, Integer>> partitionedKeysToIndexes = new HashMap<>(partitioned.size());
+        for (Integer partition : partitioned.keySet()) {
+            List<K> keysForPartition = partitioned.get(partition);
+            Map<K, Integer> keysToIndexes = new HashMap<>(keysForPartition.size());
+            for (int i = 0; i < keysForPartition.size(); i++) {
+                keysToIndexes.put(keysForPartition.get(i), i);
+            }
+            partitionedKeysToIndexes.put(partition, keysToIndexes);
+        }
         Map<K, Integer> slots = SlotHash.getSlots(partitioned);
-        Map<Integer, RedisFuture<List<KeyValue<K, V>>>> executions = new HashMap<>();
+        Map<Integer, RedisFuture<List<KeyValue<K, V>>>> executions = new HashMap<>(partitioned.size());
 
         for (Map.Entry<Integer, List<K>> entry : partitioned.entrySet()) {
             RedisFuture<List<KeyValue<K, V>>> mget = super.mget(entry.getValue());
@@ -298,11 +311,11 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
 
         // restore order of key
         return new PipelinedRedisFuture<>(executions, objectPipelinedRedisFuture -> {
-            List<KeyValue<K, V>> result = new ArrayList<>();
+            List<KeyValue<K, V>> result = new ArrayList<>(slots.size());
             for (K opKey : keys) {
                 int slot = slots.get(opKey);
 
-                int position = partitioned.get(slot).indexOf(opKey);
+                int position = partitionedKeysToIndexes.get(slot).get(opKey);
                 RedisFuture<List<KeyValue<K, V>>> listRedisFuture = executions.get(slot);
                 result.add(MultiNodeExecution.execute(() -> listRedisFuture.get().get(position)));
             }
@@ -394,6 +407,11 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
     public RedisFuture<K> randomkey() {
 
         Partitions partitions = getStatefulConnection().getPartitions();
+
+        if (partitions.isEmpty()) {
+            return super.randomkey();
+        }
+
         int index = ThreadLocalRandom.current().nextInt(partitions.size());
         RedisClusterNode partition = partitions.getPartition(index);
 
@@ -497,12 +515,12 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
     }
 
     private CompletableFuture<RedisClusterAsyncCommands<K, V>> getConnectionAsync(String nodeId) {
-        return getConnectionProvider().<K, V> getConnectionAsync(ClusterConnectionProvider.Intent.WRITE, nodeId)
+        return getConnectionProvider().<K, V> getConnectionAsync(ConnectionIntent.WRITE, nodeId)
                 .thenApply(StatefulRedisConnection::async);
     }
 
     private CompletableFuture<RedisClusterAsyncCommands<K, V>> getConnectionAsync(String host, int port) {
-        return getConnectionProvider().<K, V> getConnectionAsync(ClusterConnectionProvider.Intent.WRITE, host, port)
+        return getConnectionProvider().<K, V> getConnectionAsync(ConnectionIntent.WRITE, host, port)
                 .thenApply(StatefulRedisConnection::async);
     }
 
@@ -518,16 +536,16 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
 
     @Override
     public AsyncNodeSelection<K, V> readonly(Predicate<RedisClusterNode> predicate) {
-        return nodes(predicate, ClusterConnectionProvider.Intent.READ, false);
+        return nodes(predicate, ConnectionIntent.READ, false);
     }
 
     @Override
     public AsyncNodeSelection<K, V> nodes(Predicate<RedisClusterNode> predicate, boolean dynamic) {
-        return nodes(predicate, ClusterConnectionProvider.Intent.WRITE, dynamic);
+        return nodes(predicate, ConnectionIntent.WRITE, dynamic);
     }
 
     @SuppressWarnings("unchecked")
-    protected AsyncNodeSelection<K, V> nodes(Predicate<RedisClusterNode> predicate, ClusterConnectionProvider.Intent intent,
+    protected AsyncNodeSelection<K, V> nodes(Predicate<RedisClusterNode> predicate, ConnectionIntent connectionIntent,
             boolean dynamic) {
 
         NodeSelectionSupport<RedisAsyncCommands<K, V>, ?> selection;
@@ -535,10 +553,10 @@ public class RedisAdvancedClusterAsyncCommandsImpl<K, V> extends AbstractRedisAs
         StatefulRedisClusterConnectionImpl<K, V> impl = (StatefulRedisClusterConnectionImpl<K, V>) getConnection();
         if (dynamic) {
             selection = new DynamicNodeSelection<RedisAsyncCommands<K, V>, Object, K, V>(
-                    impl.getClusterDistributionChannelWriter(), predicate, intent, StatefulRedisConnection::async);
+                    impl.getClusterDistributionChannelWriter(), predicate, connectionIntent, StatefulRedisConnection::async);
         } else {
             selection = new StaticNodeSelection<RedisAsyncCommands<K, V>, Object, K, V>(
-                    impl.getClusterDistributionChannelWriter(), predicate, intent, StatefulRedisConnection::async);
+                    impl.getClusterDistributionChannelWriter(), predicate, connectionIntent, StatefulRedisConnection::async);
         }
 
         NodeSelectionInvocationHandler h = new NodeSelectionInvocationHandler((AbstractNodeSelection<?, ?, ?, ?>) selection,

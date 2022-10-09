@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,16 +94,8 @@ import io.lettuce.core.internal.LettuceStrings;
  * <i>&amp;sentinelMasterId=sentinelMasterId</i>] [<i>&amp;database=database</i>] [<i>&amp;clientName=clientName</i>]
  * [<i>&amp;verifyPeer=NONE|CA|FULL</i>]] </blockquote>
  *
- * <p>
- * Note: When using Redis Sentinel, the password from the URI applies to the data nodes only. Sentinel authentication must be
- * configured for each {@link #getSentinels() sentinel node}.
- * </p>
- * <p>
- * Note:Usernames are supported as of Redis 6.
- * </p>
  *
- * <p>
- * <b>Schemes</b>
+ * <h3><b>Schemes</b>
  * </p>
  * <ul>
  * <li><b>redis</b> Redis Standalone</li>
@@ -130,11 +122,29 @@ import io.lettuce.core.internal.LettuceStrings;
  * Hint: The database parameter within the query part has higher precedence than the database in the path.
  * </p>
  *
- * RedisURI supports Redis Standalone, Redis Sentinel and Redis Cluster with plain, SSL, TLS and unix domain socket connections.
+ * <p>
+ * {@code RedisURI} supports Redis Standalone, Redis Sentinel and Redis Cluster with plain, SSL, TLS and unix domain socket
+ * connections.
+ * </p>
+ *
+ * <h3>Authentication</h3> Redis URIs may contain authentication details that effectively lead to usernames with passwords,
+ * password-only, or no authentication. Connections are authenticated by using information provided through
+ * {@link RedisCredentials}. Credentials are obtained at connection time from {@link RedisCredentialsProvider}. When configuring
+ * username/password on the URI statically, then a {@link StaticCredentialsProvider} holds the configured information.
+ *
+ * <p>
+ * <b>Notes</b>
+ * </p>
+ * <ul>
+ * <li>When using Redis Sentinel, the password from the URI applies to the data nodes only. Sentinel authentication must be
+ * configured for each {@link #getSentinels() sentinel node}.</li>
+ * <li>Usernames are supported as of Redis 6.</li>
+ * </ul>
  *
  * @author Mark Paluch
  * @author Guy Korland
  * @author Johnny Lim
+ * @author Jon Iantosca
  * @since 3.0
  */
 @SuppressWarnings("serial")
@@ -211,9 +221,13 @@ public class RedisURI implements Serializable, ConnectionPoint {
 
     private String clientName;
 
+    @Deprecated
     private String username;
 
+    @Deprecated
     private char[] password;
+
+    private RedisCredentialsProvider credentialsProvider;
 
     private boolean ssl = false;
 
@@ -399,9 +413,7 @@ public class RedisURI implements Serializable, ConnectionPoint {
 
     /**
      * Apply authentication from another {@link RedisURI}. The authentication settings of the {@code source} URI will be applied
-     * to this URI. That is in particular username and password. If the source has authentication credentials configured, then
-     * this URI will use the same credentials. If this URI has authentication configured and the {@code source} URI has no
-     * authentication, then this URI's authentication credentials will be reset.
+     * to this URI. That is in particular the {@link RedisCredentialsProvider}.
      *
      * @param source must not be {@code null}.
      * @since 6.0
@@ -410,8 +422,14 @@ public class RedisURI implements Serializable, ConnectionPoint {
 
         LettuceAssert.notNull(source, "Source RedisURI must not be null");
 
-        setUsername(source.getUsername());
-        setPassword(source.getPassword());
+        if (source.credentialsProvider != null) {
+            setCredentialsProvider(source.getCredentialsProvider());
+        } else {
+            setUsername(source.getUsername());
+            if (source.getPassword() != null) {
+                setPassword(source.getPassword());
+            }
+        }
     }
 
     /**
@@ -419,17 +437,22 @@ public class RedisURI implements Serializable, ConnectionPoint {
      *
      * @return the username
      * @since 6.0
+     * @deprecated since 6.2, use {@link #getCredentialsProvider()} instead.
      */
+    @Deprecated
     public String getUsername() {
-        return username;
+        return this.username;
     }
 
     /**
      * Sets the username.
      *
      * @param username the username, must not be {@code null}.
+     * @throws IllegalStateException if a {@link RedisCredentialsProvider} is configured
      * @since 6.0
+     * @deprecated since 6.2, use {@link #setCredentialsProvider(RedisCredentialsProvider)} instead.
      */
+    @Deprecated
     public void setUsername(String username) {
         this.username = username;
     }
@@ -438,9 +461,11 @@ public class RedisURI implements Serializable, ConnectionPoint {
      * Returns the password.
      *
      * @return the password
+     * @deprecated since 6.2, use {@link #getCredentialsProvider()} instead.
      */
+    @Deprecated
     public char[] getPassword() {
-        return password;
+        return this.password;
     }
 
     /**
@@ -451,7 +476,9 @@ public class RedisURI implements Serializable, ConnectionPoint {
      * {@link CharSequence} (e.g. {@link StringBuilder} or netty's {@link io.netty.util.AsciiString}).
      *
      * @param password the password, must not be {@code null}.
-     * @deprecated since 6.0. Use {@link #setPassword(CharSequence)} or {@link #setPassword(char[])} to avoid String caching.
+     * @throws IllegalStateException if a {@link RedisCredentialsProvider} is configured
+     * @since 4.4
+     * @deprecated since 6.2, use {@link #setCredentialsProvider(RedisCredentialsProvider)} instead.
      */
     @Deprecated
     public void setPassword(String password) {
@@ -462,23 +489,63 @@ public class RedisURI implements Serializable, ConnectionPoint {
      * Sets the password. Use empty string to skip authentication.
      *
      * @param password the password, must not be {@code null}.
+     * @throws IllegalStateException if a {@link RedisCredentialsProvider} is configured
      * @since 5.2
+     * @deprecated since 6.2, use {@link #setCredentialsProvider(RedisCredentialsProvider)} instead.
      */
+    @Deprecated
     public void setPassword(CharSequence password) {
 
         LettuceAssert.notNull(password, "Password must not be null");
-        this.password = password.toString().toCharArray();
+        setPassword(password.toString().toCharArray());
     }
 
     /**
      * Sets the password. Use empty char array to skip authentication.
      *
      * @param password the password, can be {@code null}.
+     * @throws IllegalStateException if a {@link RedisCredentialsProvider} is configured
      * @since 4.4
+     * @deprecated since 6.2, use {@link #setCredentialsProvider(RedisCredentialsProvider)} instead.
      */
+    @Deprecated
     public void setPassword(char[] password) {
 
-        this.password = password == null ? null : Arrays.copyOf(password, password.length);
+        LettuceAssert.assertState(this.credentialsProvider == null,
+                "Cannot configure password after setting a RedisCredentialsProvider");
+        this.password = password;
+    }
+
+    /**
+     * Returns the {@link RedisCredentialsProvider} to use to authenticate Redis connections. Returns a static credentials
+     * provider no explicit {@link RedisCredentialsProvider} was configured.
+     *
+     * @return the {@link RedisCredentialsProvider} to use to authenticate Redis connections
+     * @since 6.2
+     */
+    public RedisCredentialsProvider getCredentialsProvider() {
+
+        if (this.credentialsProvider != null) {
+            return this.credentialsProvider;
+        }
+
+        return new StaticCredentialsProvider(getUsername(), getPassword());
+    }
+
+    /**
+     * Sets the {@link RedisCredentialsProvider}. Configuring a credentials provider resets the configured static
+     * username/password.
+     *
+     * @param credentialsProvider the credentials provider to use when authenticating a Redis connection.
+     * @since 6.2
+     */
+    public void setCredentialsProvider(RedisCredentialsProvider credentialsProvider) {
+
+        LettuceAssert.notNull(credentialsProvider, "RedisCredentialsProvider must not be null");
+
+        this.credentialsProvider = credentialsProvider;
+        this.username = null;
+        this.password = null;
     }
 
     /**
@@ -793,14 +860,24 @@ public class RedisURI implements Serializable, ConnectionPoint {
             }
         }
 
-        if (password != null && password.length != 0) {
-            authority = urlEncode(
-                    maskCredentials ? IntStream.range(0, password.length).mapToObj(ignore -> "*").collect(Collectors.joining())
-                            : new String(password))
-                    + "@" + authority;
-        }
-        if (username != null) {
-            authority = urlEncode(username) + ":" + authority;
+        if (credentialsProvider != null) {
+
+            if (!maskCredentials) {
+                authority = urlEncode("**credentialsProvider**") + "@" + authority;
+            }
+        } else {
+
+            String username = getUsername();
+            char[] password = getPassword();
+
+            if (password != null && password.length != 0) {
+                authority = urlEncode(maskCredentials
+                        ? IntStream.range(0, password.length).mapToObj(ignore -> "*").collect(Collectors.joining())
+                        : new String(password)) + "@" + authority;
+            }
+            if (username != null) {
+                authority = urlEncode(username) + ":" + authority;
+            }
         }
         return authority;
     }
@@ -1141,6 +1218,8 @@ public class RedisURI implements Serializable, ConnectionPoint {
 
         private char[] password;
 
+        private RedisCredentialsProvider credentialsProvider;
+
         private char[] sentinelPassword;
 
         private boolean ssl = false;
@@ -1382,7 +1461,7 @@ public class RedisURI implements Serializable, ConnectionPoint {
             LettuceAssert.notNull(source, "Source RedisURI must not be null");
 
             withSsl(source.isSsl());
-            withVerifyPeer(source.isVerifyPeer());
+            withVerifyPeer(source.getVerifyMode());
             withStartTls(source.isStartTls());
 
             return this;
@@ -1496,10 +1575,13 @@ public class RedisURI implements Serializable, ConnectionPoint {
 
             LettuceAssert.notNull(source, "Source RedisURI must not be null");
 
-            this.username = source.getUsername();
-            withPassword(source.getPassword());
+            if (source.credentialsProvider != null) {
+                return withAuthentication(source.getCredentialsProvider());
+            }
 
-            return this;
+            this.username = source.getUsername();
+
+            return withPassword(source.getPassword());
         }
 
         /**
@@ -1521,9 +1603,23 @@ public class RedisURI implements Serializable, ConnectionPoint {
 
         /**
          * Configures authentication.
+         *
+         * @param credentialsProvider must not be {@code null}.
+         * @since 6.2
+         */
+        public Builder withAuthentication(RedisCredentialsProvider credentialsProvider) {
+
+            LettuceAssert.notNull(credentialsProvider, "RedisCredentialsProvider must not be null");
+
+            this.credentialsProvider = credentialsProvider;
+            return this;
+        }
+
+        /**
+         * Configures authentication.
          * <p>
          * This method is deprecated as of Lettuce 6.0. The reason is that {@link String} has a strong caching affinity and the
-         * JVM cannot easily GC {@code String} instances. Therefore we suggest using either {@code char[]} or a custom
+         * JVM cannot easily GC {@code String} instances. Therefore, we suggest using either {@code char[]} or a custom
          * {@link CharSequence} (e.g. {@link StringBuilder} or netty's {@link io.netty.util.AsciiString}).
          *
          * @param password the password
@@ -1614,12 +1710,14 @@ public class RedisURI implements Serializable, ConnectionPoint {
             redisURI.setHost(host);
             redisURI.setPort(port);
 
-            if (username != null) {
+            if (credentialsProvider != null) {
+                redisURI.setCredentialsProvider(credentialsProvider);
+            } else {
                 redisURI.setUsername(username);
-            }
 
-            if (password != null) {
-                redisURI.setPassword(password);
+                if (password != null) {
+                    redisURI.setPassword(password);
+                }
             }
 
             redisURI.setDatabase(database);

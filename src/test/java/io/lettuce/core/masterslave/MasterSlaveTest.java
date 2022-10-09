@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,8 @@
  */
 package io.lettuce.core.masterslave;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -83,11 +82,11 @@ class MasterSlaveTest extends AbstractRedisClientTest {
 
         WithPassword.enableAuthentication(this.connection1);
         this.connection1.auth(passwd);
-        this.connection1.configSet("masterauth", passwd);
+        this.connection1.configSet("masterauth", passwd.toString());
 
         WithPassword.enableAuthentication(this.connection2);
         this.connection2.auth(passwd);
-        this.connection2.configSet("masterauth", passwd);
+        this.connection2.configSet("masterauth", passwd.toString());
 
         connection = MasterSlave.connect(client, StringCodec.UTF8, upstreamURI);
         connection.setReadFrom(ReadFrom.REPLICA);

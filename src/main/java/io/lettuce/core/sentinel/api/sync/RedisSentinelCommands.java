@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,9 @@ public interface RedisSentinelCommands<K, V> {
      *
      * @param key the key.
      * @return List&lt;Map&lt;K, V&gt;&gt;.
+     * @deprecated since 6.2, use #replicas(Object) instead.
      */
+    @Deprecated
     List<Map<K, V>> slaves(K key);
 
     /**
@@ -74,6 +76,15 @@ public interface RedisSentinelCommands<K, V> {
      * @return Long.
      */
     Long reset(K key);
+
+    /**
+     * Provides a list of replicas for the master with the specified name.
+     *
+     * @param key the key.
+     * @return List&lt;Map&lt;K, V&gt;&gt;.
+     * @since 6.2
+     */
+    List<Map<K, V>> replicas(K key);
 
     /**
      * Perform a failover.

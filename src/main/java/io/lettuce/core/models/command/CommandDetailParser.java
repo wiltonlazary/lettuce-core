@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,22 @@
  */
 package io.lettuce.core.models.command;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import io.lettuce.core.AclCategory;
 import io.lettuce.core.internal.LettuceAssert;
 
 /**
  * Parser for Redis
- * <a href="http://redis.io/commands/command">COMMAND</a>/<a href="http://redis.io/commands/command-info">COMMAND INFO</a>
+ * <a href="https://redis.io/commands/command">COMMAND</a>/<a href="https://redis.io/commands/command-info">COMMAND INFO</a>
  * output.
  *
  * @author Mark Paluch

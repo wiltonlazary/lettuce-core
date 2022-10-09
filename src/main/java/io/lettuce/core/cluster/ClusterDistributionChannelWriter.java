@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@ import io.lettuce.core.RedisChannelHandler;
 import io.lettuce.core.RedisChannelWriter;
 import io.lettuce.core.RedisException;
 import io.lettuce.core.api.StatefulRedisConnection;
-import io.lettuce.core.cluster.ClusterConnectionProvider.Intent;
 import io.lettuce.core.cluster.event.AskRedirectionEvent;
 import io.lettuce.core.cluster.event.MovedRedirectionEvent;
 import io.lettuce.core.cluster.models.partitions.Partitions;
@@ -46,9 +45,11 @@ import io.lettuce.core.internal.LettuceAssert;
 import io.lettuce.core.output.StatusOutput;
 import io.lettuce.core.protocol.Command;
 import io.lettuce.core.protocol.CommandArgs;
+import io.lettuce.core.protocol.CommandExpiryWriter;
 import io.lettuce.core.protocol.CommandKeyword;
 import io.lettuce.core.protocol.CommandType;
 import io.lettuce.core.protocol.ConnectionFacade;
+import io.lettuce.core.protocol.ConnectionIntent;
 import io.lettuce.core.protocol.DefaultEndpoint;
 import io.lettuce.core.protocol.ProtocolKeyword;
 import io.lettuce.core.protocol.RedisCommand;
@@ -76,7 +77,7 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
 
     private volatile Partitions partitions;
 
-    ClusterDistributionChannelWriter(ClientOptions clientOptions, RedisChannelWriter defaultWriter,
+    ClusterDistributionChannelWriter(RedisChannelWriter defaultWriter, ClientOptions clientOptions,
             ClusterEventListener clusterEventListener) {
 
         if (clientOptions instanceof ClusterClientOptions) {
@@ -141,7 +142,7 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
                 command.getOutput().setError((String) null);
 
                 CompletableFuture<StatefulRedisConnection<K, V>> connectFuture = asyncClusterConnectionProvider
-                        .getConnectionAsync(Intent.WRITE, target.getHostText(), target.getPort());
+                        .getConnectionAsync(ConnectionIntent.WRITE, target.getHostText(), target.getPort());
 
                 if (isSuccessfullyCompleted(connectFuture)) {
                     writeCommand(command, asking, connectFuture.join(), null);
@@ -163,10 +164,10 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
             if (encodedKey != null) {
 
                 int hash = getSlot(encodedKey);
-                Intent intent = getIntent(command.getType());
+                ConnectionIntent connectionIntent = getIntent(command.getType());
 
                 CompletableFuture<StatefulRedisConnection<K, V>> connectFuture = ((AsyncClusterConnectionProvider) clusterConnectionProvider)
-                        .getConnectionAsync(intent, hash);
+                        .getConnectionAsync(connectionIntent, hash);
 
                 if (isSuccessfullyCompleted(connectFuture)) {
                     writeCommand(commandToSend, false, connectFuture.join(), null);
@@ -277,7 +278,7 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
 
         // TODO: Retain order or retain Intent preference?
         // Currently: Retain order
-        Intent intent = getIntent(commands);
+        ConnectionIntent connectionIntent = getIntent(commands);
 
         for (RedisCommand<K, V, ?> cmd : commands) {
 
@@ -296,7 +297,7 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
 
             int hash = getSlot(args.getFirstEncodedKey());
 
-            List<ClusterCommand<K, V, ?>> commandPartition = partitions.computeIfAbsent(SlotIntent.of(intent, hash),
+            List<ClusterCommand<K, V, ?>> commandPartition = partitions.computeIfAbsent(SlotIntent.of(connectionIntent, hash),
                     slotIntent -> new ArrayList<>());
 
             commandPartition.add(new ClusterCommand<>(cmd, this, executionLimit));
@@ -306,7 +307,7 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
 
             SlotIntent slotIntent = entry.getKey();
             RedisChannelHandler<K, V> connection = (RedisChannelHandler<K, V>) clusterConnectionProvider
-                    .getConnection(slotIntent.intent, slotIntent.slotHash);
+                    .getConnection(slotIntent.connectionIntent, slotIntent.slotHash);
 
             RedisChannelWriter channelWriter = connection.getChannelWriter();
             if (channelWriter instanceof ClusterDistributionChannelWriter) {
@@ -328,17 +329,17 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
     /**
      * Optimization: Determine command intents and optimize for bulk execution preferring one node.
      * <p>
-     * If there is only one intent, then we take the intent derived from the commands. If there is more than one intent, then
-     * use {@link Intent#WRITE}.
+     * If there is only one connectionIntent, then we take the connectionIntent derived from the commands. If there is more than one connectionIntent, then
+     * use {@link ConnectionIntent#WRITE}.
      *
      * @param commands {@link Collection} of {@link RedisCommand commands}.
-     * @return the intent.
+     * @return the connectionIntent.
      */
-    static Intent getIntent(Collection<? extends RedisCommand<?, ?, ?>> commands) {
+    static ConnectionIntent getIntent(Collection<? extends RedisCommand<?, ?, ?>> commands) {
 
         boolean w = false;
         boolean r = false;
-        Intent singleIntent = Intent.WRITE;
+        ConnectionIntent singleConnectionIntent = ConnectionIntent.WRITE;
 
         for (RedisCommand<?, ?, ?> command : commands) {
 
@@ -346,25 +347,25 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
                 continue;
             }
 
-            singleIntent = getIntent(command.getType());
-            if (singleIntent == Intent.READ) {
+            singleConnectionIntent = getIntent(command.getType());
+            if (singleConnectionIntent == ConnectionIntent.READ) {
                 r = true;
             }
 
-            if (singleIntent == Intent.WRITE) {
+            if (singleConnectionIntent == ConnectionIntent.WRITE) {
                 w = true;
             }
 
             if (r && w) {
-                return Intent.WRITE;
+                return ConnectionIntent.WRITE;
             }
         }
 
-        return singleIntent;
+        return singleConnectionIntent;
     }
 
-    private static Intent getIntent(ProtocolKeyword type) {
-        return ReadOnlyCommands.isReadOnlyCommand(type) ? Intent.READ : Intent.WRITE;
+    private static ConnectionIntent getIntent(ProtocolKeyword type) {
+        return ReadOnlyCommands.isReadOnlyCommand(type) ? ConnectionIntent.READ : ConnectionIntent.WRITE;
     }
 
     static HostAndPort getMoveTarget(String errorMessage) {
@@ -426,16 +427,29 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
     }
 
     public void disconnectDefaultEndpoint() {
+        unwrapDefaultEndpoint().disconnect();
+    }
 
-        DefaultEndpoint defaultEndpoint;
+    private DefaultEndpoint unwrapDefaultEndpoint() {
 
-        if (defaultWriter instanceof CommandListenerWriter) {
-            defaultEndpoint = (DefaultEndpoint) ((CommandListenerWriter) defaultWriter).getDelegate();
-        } else {
-            defaultEndpoint = ((DefaultEndpoint) defaultWriter);
+        RedisChannelWriter writer = this.defaultWriter;
+
+        while (!(writer instanceof DefaultEndpoint)) {
+
+            if (writer instanceof CommandListenerWriter) {
+                writer = ((CommandListenerWriter) writer).getDelegate();
+                continue;
+            }
+
+            if (writer instanceof CommandExpiryWriter) {
+                writer = ((CommandExpiryWriter) writer).getDelegate();
+                continue;
+            }
+
+            throw new IllegalStateException(String.format("Cannot unwrap defaultWriter %s into DefaultEndpoint", writer));
         }
 
-        defaultEndpoint.disconnect();
+        return (DefaultEndpoint) writer;
     }
 
     @Override
@@ -509,7 +523,7 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
 
         final int slotHash;
 
-        final Intent intent;
+        final ConnectionIntent connectionIntent;
 
         private static final SlotIntent[] READ;
 
@@ -521,20 +535,20 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
 
             IntStream.range(0, SlotHash.SLOT_COUNT).forEach(i -> {
 
-                READ[i] = new SlotIntent(i, Intent.READ);
-                WRITE[i] = new SlotIntent(i, Intent.WRITE);
+                READ[i] = new SlotIntent(i, ConnectionIntent.READ);
+                WRITE[i] = new SlotIntent(i, ConnectionIntent.WRITE);
             });
 
         }
 
-        private SlotIntent(int slotHash, Intent intent) {
+        private SlotIntent(int slotHash, ConnectionIntent connectionIntent) {
             this.slotHash = slotHash;
-            this.intent = intent;
+            this.connectionIntent = connectionIntent;
         }
 
-        public static SlotIntent of(Intent intent, int slot) {
+        public static SlotIntent of(ConnectionIntent connectionIntent, int slot) {
 
-            if (intent == Intent.READ) {
+            if (connectionIntent == ConnectionIntent.READ) {
                 return READ[slot];
             }
 
@@ -552,13 +566,13 @@ class ClusterDistributionChannelWriter implements RedisChannelWriter {
 
             if (slotHash != that.slotHash)
                 return false;
-            return intent == that.intent;
+            return connectionIntent == that.connectionIntent;
         }
 
         @Override
         public int hashCode() {
             int result = slotHash;
-            result = 31 * result + intent.hashCode();
+            result = 31 * result + connectionIntent.hashCode();
             return result;
         }
 

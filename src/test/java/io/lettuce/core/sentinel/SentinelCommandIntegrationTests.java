@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import javax.inject.Inject;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -39,6 +40,7 @@ import io.lettuce.core.sentinel.api.StatefulRedisSentinelConnection;
 import io.lettuce.core.sentinel.api.sync.RedisSentinelCommands;
 import io.lettuce.test.LettuceExtension;
 import io.lettuce.test.Wait;
+import io.lettuce.test.condition.EnabledOnCommand;
 import io.lettuce.test.settings.TestSettings;
 
 /**
@@ -160,9 +162,19 @@ public class SentinelCommandIntegrationTests extends TestSupport {
     }
 
     @Test
+    @Disabled("Not available on Redis 7")
     void getSlaves() {
 
         List<Map<String, String>> result = sentinel.slaves(SentinelTestSettings.MASTER_ID);
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0)).containsKey("port");
+    }
+
+    @Test
+    @EnabledOnCommand("PEXPIRETIME") // Redis 7.0
+    void getReplicas() {
+
+        List<Map<String, String>> result = sentinel.replicas(SentinelTestSettings.MASTER_ID);
         assertThat(result).hasSize(1);
         assertThat(result.get(0)).containsKey("port");
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,9 @@
  */
 package io.lettuce.core.masterreplica;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,6 +39,7 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.models.role.RedisInstance;
+import io.lettuce.core.protocol.ConnectionIntent;
 
 /**
  * @author Mark Paluch
@@ -80,11 +79,12 @@ class MasterReplicaConnectionProviderUnitTests {
         when(clientMock.connectAsync(eq(StringCodec.UTF8), any()))
                 .thenReturn(ConnectionFuture.completed(null, nodeConnectionMock));
 
-        StatefulRedisConnection<String, String> connection = sut.getConnection(MasterReplicaConnectionProvider.Intent.READ);
+        StatefulRedisConnection<String, String> connection = sut.getConnection(ConnectionIntent.READ);
         assertThat(connection).isNotNull();
 
         sut.close();
 
         verify(channelHandlerMock).closeAsync();
     }
+
 }

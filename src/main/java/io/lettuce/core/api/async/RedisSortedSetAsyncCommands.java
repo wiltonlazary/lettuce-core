@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -277,6 +277,28 @@ public interface RedisSortedSetAsyncCommands<K, V> {
      * @since 6.1
      */
     RedisFuture<List<V>> zinter(ZAggregateArgs aggregateArgs, K... keys);
+
+    /**
+     * This command is similar to {@link #zinter(java.lang.Object[])}, but instead of returning the result set, it returns just
+     * the cardinality of the result.
+     *
+     * @param keys the keys.
+     * @return Long Integer reply the number of elements in the resulting intersection.
+     * @since 6.2
+     */
+    RedisFuture<Long> zintercard(K... keys);
+
+    /**
+     * This command is similar to {@link #zinter(java.lang.Object[])}, but instead of returning the result set, it returns just
+     * the cardinality of the result.
+     *
+     * @param limit If the intersection cardinality reaches limit partway through the computation, the algorithm will exit and
+     *        yield limit as the cardinality
+     * @param keys the keys.
+     * @return Long Integer reply the number of elements in the resulting intersection.
+     * @since 6.2
+     */
+    RedisFuture<Long> zintercard(long limit, K... keys);
 
     /**
      * Intersect multiple sorted sets and returns the resulting sorted.
@@ -825,8 +847,21 @@ public interface RedisSortedSetAsyncCommands<K, V> {
      *
      * @param dstKey the dst key.
      * @param srcKey the src key.
+     * @param range the rank.
+     * @return the number of elements in the resulting sorted set.
+     * @since 6.2.1
+     */
+    RedisFuture<Long> zrangestore(K dstKey, K srcKey, Range<Long> range);
+
+    /**
+     * Get the specified range of elements in the sorted set stored at {@code srcKey} and stores the result in the
+     * {@code dstKey} destination key.
+     *
+     * @param dstKey the dst key.
+     * @param srcKey the src key.
      * @param range the lexicographical range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     RedisFuture<Long> zrangestorebylex(K dstKey, K srcKey, Range<? extends V> range, Limit limit);
@@ -838,7 +873,8 @@ public interface RedisSortedSetAsyncCommands<K, V> {
      * @param dstKey the dst key.
      * @param srcKey the src key.
      * @param range the score range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     RedisFuture<Long> zrangestorebyscore(K dstKey, K srcKey, Range<? extends Number> range, Limit limit);
@@ -1034,7 +1070,7 @@ public interface RedisSortedSetAsyncCommands<K, V> {
      * @param max max score.
      * @param min min score.
      * @param offset the withscores.
-     * @param count the null.
+     * @param count the number of items.
      * @return List&lt;V&gt; array-reply list of elements in the specified score range.
      * @deprecated Use {@link #zrevrangebyscore(java.lang.Object, Range, Limit)}.
      */
@@ -1297,13 +1333,26 @@ public interface RedisSortedSetAsyncCommands<K, V> {
     RedisFuture<Long> zrevrangebyscoreWithScores(ScoredValueStreamingChannel<V> channel, K key, Range<? extends Number> range, Limit limit);
 
     /**
+     * Get the specified range of elements ordered from high to low in the sorted set stored at {@code srcKey} and stores the
+     * result in the {@code dstKey} destination key.
+     *
+     * @param dstKey the dst key.
+     * @param srcKey the src key.
+     * @param range the rank.
+     * @return the number of elements in the resulting sorted set.
+     * @since 6.2.1
+     */
+    RedisFuture<Long> zrevrangestore(K dstKey, K srcKey, Range<Long> range);
+
+    /**
      * Get the lexicographical range ordered from high to low of elements in the sorted set stored at {@code srcKey} and stores
      * the result in the {@code dstKey} destination key.
      *
      * @param dstKey the src key.
      * @param srcKey the dst key.
      * @param range the lexicographical range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     RedisFuture<Long> zrevrangestorebylex(K dstKey, K srcKey, Range<? extends V> range, Limit limit);
@@ -1316,7 +1365,8 @@ public interface RedisSortedSetAsyncCommands<K, V> {
      *
      * @param srcKey the dst key.
      * @param range the score range.
-     * @return The number of elements in the resulting sorted set.
+     * @param limit the limit to apply.
+     * @return the number of elements in the resulting sorted set.
      * @since 6.1
      */
     RedisFuture<Long> zrevrangestorebyscore(K dstKey, K srcKey, Range<? extends Number> range, Limit limit);

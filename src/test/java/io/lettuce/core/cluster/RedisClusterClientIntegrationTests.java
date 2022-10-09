@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,13 +51,11 @@ import io.lettuce.core.cluster.api.sync.RedisClusterCommands;
 import io.lettuce.core.cluster.models.partitions.Partitions;
 import io.lettuce.core.cluster.models.partitions.RedisClusterNode;
 import io.lettuce.core.cluster.pubsub.StatefulRedisClusterPubSubConnection;
-import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.event.command.CommandFailedEvent;
 import io.lettuce.core.event.command.CommandListener;
 import io.lettuce.core.event.command.CommandStartedEvent;
 import io.lettuce.core.event.command.CommandSucceededEvent;
 import io.lettuce.core.protocol.AsyncCommand;
-import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.test.Delay;
 import io.lettuce.test.LettuceExtension;
 import io.lettuce.test.TestFutures;
@@ -158,40 +156,6 @@ class RedisClusterClientIntegrationTests extends TestSupport {
         assertThat(connection.getTimeout()).isEqualTo(Duration.ofMinutes(1));
         assertThat(connection.getConnection(host, ClusterTestSettings.port1).getTimeout()).isEqualTo(Duration.ofMinutes(1));
 
-        connection.close();
-    }
-
-    @Test
-    void shouldApplyTimeoutOnRegularConnectionUsingCodec() {
-
-        clusterClient.setDefaultTimeout(2, TimeUnit.MINUTES);
-
-        StatefulRedisClusterConnection<String, String> connection = clusterClient.connect(StringCodec.UTF8);
-
-        assertThat(connection.getTimeout()).isEqualTo(Duration.ofMinutes(2));
-        assertThat(connection.getConnection(host, ClusterTestSettings.port1).getTimeout()).isEqualTo(Duration.ofMinutes(2));
-
-        connection.close();
-    }
-
-    @Test
-    void shouldApplyTimeoutOnPubSubConnection() {
-
-        clusterClient.setDefaultTimeout(Duration.ofMinutes(1));
-
-        StatefulRedisPubSubConnection<String, String> connection = clusterClient.connectPubSub();
-
-        assertThat(connection.getTimeout()).isEqualTo(Duration.ofMinutes(1));
-        connection.close();
-    }
-
-    @Test
-    void shouldApplyTimeoutOnPubSubConnectionUsingCodec() {
-
-        clusterClient.setDefaultTimeout(Duration.ofMinutes(1));
-        StatefulRedisPubSubConnection<String, String> connection = clusterClient.connectPubSub(StringCodec.UTF8);
-
-        assertThat(connection.getTimeout()).isEqualTo(Duration.ofMinutes(1));
         connection.close();
     }
 
@@ -333,6 +297,7 @@ class RedisClusterClientIntegrationTests extends TestSupport {
             for (RedisClusterNode partition : partitions) {
                 partition.setSlots(Collections.emptyList());
                 if (partition.getFlags().contains(RedisClusterNode.NodeFlag.MYSELF)) {
+                    partition.getFlags().add(RedisClusterNode.NodeFlag.UPSTREAM);
                     partition.setSlots(IntStream.range(0, SlotHash.SLOT_COUNT).boxed().collect(Collectors.toList()));
                 }
             }
@@ -469,6 +434,22 @@ class RedisClusterClientIntegrationTests extends TestSupport {
             assertThatThrownBy(clusterClient::connect).isInstanceOf(RedisException.class);
         } finally {
             connection.close();
+            FastShutdown.shutdown(clusterClient);
+        }
+    }
+
+    @Test
+    void appliesNodeFilter() {
+
+        RedisClusterClient clusterClient = RedisClusterClient.create(TestClientResources.get(),
+                RedisURI.Builder.redis(host, ClusterTestSettings.port1).build());
+        try {
+
+            clusterClient.setOptions(
+                    ClusterClientOptions.builder().nodeFilter(it -> it.is(RedisClusterNode.NodeFlag.UPSTREAM)).build());
+            Partitions partitions = clusterClient.getPartitions();
+            assertThat(partitions).hasSize(2).allMatch(it -> it.is(RedisClusterNode.NodeFlag.UPSTREAM));
+        } finally {
             FastShutdown.shutdown(clusterClient);
         }
     }

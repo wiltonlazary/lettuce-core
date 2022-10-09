@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
- * A scalable and thread-safe <a href="http://redis.io/">Redis</a> cluster client supporting synchronous, asynchronous and
+ * A scalable and thread-safe <a href="https://redis.io/">Redis</a> cluster client supporting synchronous, asynchronous and
  * reactive execution models. Multiple threads may share one connection. The cluster client handles command routing based on the
  * first key of the command and maintains a view of the cluster that is available when calling the {@link #getPartitions()}
  * method.
@@ -81,6 +81,7 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
  * {@code EXEC} and {@code DISCARD} have no key and cannot be assigned to a particular node. A cluster connection uses a default
  * connection to run non-keyed commands.
  * </p>
+ *
  * <p>
  * The Redis cluster client provides a {@link RedisAdvancedClusterCommands sync}, {@link RedisAdvancedClusterAsyncCommands
  * async} and {@link io.lettuce.core.cluster.api.reactive.RedisAdvancedClusterReactiveCommands reactive} API.
@@ -92,7 +93,7 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
  * </p>
  *
  * <p>
- * <a href="http://redis.io/topics/cluster-spec#multiple-keys-operations">Multiple keys operations</a> have to operate on a key
+ * <a href="https://redis.io/topics/cluster-spec#multiple-keys-operations">Multiple keys operations</a> have to operate on a key
  * that hashes to the same slot. Following commands do not need to follow that rule since they are pipelined according to its
  * hash value to multiple nodes in parallel on the sync, async and, reactive API:
  * </p>
@@ -131,7 +132,9 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
  * Collection&lt;RedisClusterNode&gt; nodes = ping.nodes();
  * nodes.stream().forEach(redisClusterNode -&gt; ping.get(redisClusterNode));
  * </pre>
- *
+ * </p>
+ * <p>
+ * Connection timeouts are initialized from the first provided {@link RedisURI}.
  * </p>
  *
  * {@link RedisClusterClient} is an expensive resource. Reuse this instance or share external {@link ClientResources} as much as
@@ -545,7 +548,8 @@ public class RedisClusterClient extends AbstractRedisClient {
             writer = new CommandListenerWriter(writer, getCommandListeners());
         }
 
-        StatefulRedisConnectionImpl<K, V> connection = newStatefulRedisConnection(writer, endpoint, codec, getDefaultTimeout());
+        StatefulRedisConnectionImpl<K, V> connection = newStatefulRedisConnection(writer, endpoint, codec,
+                getFirstUri().getTimeout());
 
         ConnectionFuture<StatefulRedisConnection<K, V>> connectionFuture = connectStatefulAsync(connection, endpoint,
                 getFirstUri(), socketAddressSupplier,
@@ -609,7 +613,7 @@ public class RedisClusterClient extends AbstractRedisClient {
         }
 
         StatefulRedisPubSubConnectionImpl<K, V> connection = new StatefulRedisPubSubConnectionImpl<>(endpoint, writer, codec,
-                getDefaultTimeout());
+                getFirstUri().getTimeout());
 
         ConnectionFuture<StatefulRedisPubSubConnection<K, V>> connectionFuture = connectStatefulAsync(connection, endpoint,
                 getFirstUri(), socketAddressSupplier,
@@ -651,7 +655,7 @@ public class RedisClusterClient extends AbstractRedisClient {
             writer = new CommandListenerWriter(writer, getCommandListeners());
         }
 
-        ClusterDistributionChannelWriter clusterWriter = new ClusterDistributionChannelWriter(getClusterClientOptions(), writer,
+        ClusterDistributionChannelWriter clusterWriter = new ClusterDistributionChannelWriter(writer, getClusterClientOptions(),
                 topologyRefreshScheduler);
         PooledClusterConnectionProvider<K, V> pooledClusterConnectionProvider = new PooledClusterConnectionProvider<>(this,
                 clusterWriter, codec, topologyRefreshScheduler);
@@ -659,7 +663,7 @@ public class RedisClusterClient extends AbstractRedisClient {
         clusterWriter.setClusterConnectionProvider(pooledClusterConnectionProvider);
 
         StatefulRedisClusterConnectionImpl<K, V> connection = newStatefulRedisClusterConnection(clusterWriter,
-                pooledClusterConnectionProvider, codec, getDefaultTimeout());
+                pooledClusterConnectionProvider, codec, getFirstUri().getTimeout());
 
         connection.setReadFrom(ReadFrom.UPSTREAM);
         connection.setPartitions(partitions);
@@ -748,14 +752,14 @@ public class RedisClusterClient extends AbstractRedisClient {
             writer = new CommandListenerWriter(writer, getCommandListeners());
         }
 
-        ClusterDistributionChannelWriter clusterWriter = new ClusterDistributionChannelWriter(getClusterClientOptions(), writer,
+        ClusterDistributionChannelWriter clusterWriter = new ClusterDistributionChannelWriter(writer, getClusterClientOptions(),
                 topologyRefreshScheduler);
 
         ClusterPubSubConnectionProvider<K, V> pooledClusterConnectionProvider = new ClusterPubSubConnectionProvider<>(this,
                 clusterWriter, codec, endpoint.getUpstreamListener(), topologyRefreshScheduler);
 
         StatefulRedisClusterPubSubConnectionImpl<K, V> connection = new StatefulRedisClusterPubSubConnectionImpl<>(endpoint,
-                pooledClusterConnectionProvider, clusterWriter, codec, getDefaultTimeout());
+                pooledClusterConnectionProvider, clusterWriter, codec, getFirstUri().getTimeout());
 
         clusterWriter.setClusterConnectionProvider(pooledClusterConnectionProvider);
         connection.setPartitions(partitions);
@@ -983,6 +987,23 @@ public class RedisClusterClient extends AbstractRedisClient {
                 future.completeExceptionally(Exceptions.unwrap(throwable));
             }
         });
+
+        Predicate<RedisClusterNode> nodeFilter = getClusterClientOptions().getNodeFilter();
+
+        if (nodeFilter != ClusterClientOptions.DEFAULT_NODE_FILTER) {
+            return future.thenApply(partitions -> {
+
+                List<RedisClusterNode> toRemove = new ArrayList<>();
+                for (RedisClusterNode partition : partitions) {
+                    if (!nodeFilter.test(partition)) {
+                        toRemove.add(partition);
+                    }
+                }
+
+                partitions.removeAll(toRemove);
+                return partitions;
+            });
+        }
 
         return future;
     }

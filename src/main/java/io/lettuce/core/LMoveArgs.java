@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import io.lettuce.core.protocol.CommandKeyword;
 import io.lettuce.core.protocol.ProtocolKeyword;
 
 /**
- * Argument list builder for the Redis <a href="http://redis.io/commands/blmove">BLMOVE</a> and
- * <a href="http://redis.io/commands/lmove">LMOVE</a> commands. Static import the methods from {@link Builder} and chain the
+ * Argument list builder for the Redis <a href="https://redis.io/commands/blmove">BLMOVE</a> and
+ * <a href="https://redis.io/commands/lmove">LMOVE</a> commands. Static import the methods from {@link Builder} and chain the
  * method calls: {@code leftRight()}.
  *
  * @author Mikhael Sokolov

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,7 +69,9 @@ public class WithPassword {
 
         RedisConditions conditions = RedisConditions.of(commands);
 
-        commands.configSet("requirepass", TestSettings.password());
+        if (conditions.hasCommand("CONFIG")) {
+            commands.configSet("requirepass", TestSettings.password().toString());
+        }
 
         // If ACL is supported let's create a test user
         if (conditions.hasCommand("ACL")) {
@@ -92,7 +94,10 @@ public class WithPassword {
         }
 
         RedisConditions conditions = RedisConditions.of(commands);
-        commands.configSet("requirepass", "");
+
+        if (conditions.hasCommand("CONFIG")) {
+            commands.configSet("requirepass", "");
+        }
 
         if (conditions.hasCommand("ACL")) {
             Command<String, String, List<Object>> command = CliParser.parse("ACL DELUSER " + TestSettings.aclUsername());

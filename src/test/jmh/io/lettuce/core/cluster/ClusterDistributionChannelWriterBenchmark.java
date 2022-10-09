@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,7 +86,7 @@ public class ClusterDistributionChannelWriterBenchmark {
         writer.setPartitions(partitions);
         writer.setClusterConnectionProvider(new PooledClusterConnectionProvider(new EmptyRedisClusterClient(RedisURI.create(
                 "localhost", 7379)), EMPTY_WRITER, ByteArrayCodec.INSTANCE, ClusterEventListener.NO_OP) {
-            public CompletableFuture getConnectionAsync(Intent intent, int slot) {
+            public CompletableFuture getConnectionAsync(ConnectionIntent connectionIntent, int slot) {
                 return connectionFuture;
             }
         });

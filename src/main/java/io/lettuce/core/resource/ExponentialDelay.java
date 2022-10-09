@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,8 +91,8 @@ class ExponentialDelay extends Delay {
 
         if (attempt <= 0) { // safeguard against underflow
             return 0L;
-        } else if (attempt >= 64) { // safeguard against overflow in the bitshift operation
-            return Long.MAX_VALUE;
+        } else if (attempt >= 63) { // safeguard against overflow in the bitshift operation
+            return Long.MAX_VALUE - 1;
         } else {
             return 1L << (attempt - 1);
         }

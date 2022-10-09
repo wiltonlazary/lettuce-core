@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
- * State machine that decodes redis server responses encoded according to the <a href="http://redis.io/topics/protocol">Unified
+ * State machine that decodes redis server responses encoded according to the <a href="https://redis.io/topics/protocol">Unified
  * Request Protocol (RESP)</a>. Supports RESP2 and RESP3. Initialized with protocol discovery.
  *
  * @author Will Glozer

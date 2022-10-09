@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,6 +68,11 @@ public class RedisSentinelReactiveCommandsImpl<K, V> extends AbstractRedisReacti
     @Override
     public Flux<Map<K, V>> slaves(K key) {
         return createDissolvingFlux(() -> commandBuilder.slaves(key));
+    }
+
+    @Override
+    public Flux<Map<K, V>> replicas(K key) {
+        return createDissolvingFlux(() -> commandBuilder.replicas(key));
     }
 
     @Override

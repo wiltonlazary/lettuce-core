@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
+import io.lettuce.core.FlushMode;
 import io.lettuce.core.KeyScanCursor;
 import io.lettuce.core.KeyValue;
 import io.lettuce.core.RedisCommandExecutionException;
@@ -234,11 +235,55 @@ class AdvancedClusterReactiveIntegrationTests extends TestSupport {
     }
 
     @Test
+    void flushallSync() {
+
+        writeKeysToTwoNodes();
+
+        StepVerifier.create(commands.flushall(FlushMode.SYNC)).expectNext("OK").verifyComplete();
+
+        Long dbsize = syncCommands.dbsize();
+        assertThat(dbsize).isEqualTo(0);
+    }
+
+    @Test
+    void flushallAsync() {
+
+        writeKeysToTwoNodes();
+
+        StepVerifier.create(commands.flushall(FlushMode.ASYNC)).expectNext("OK").verifyComplete();
+
+        Long dbsize = syncCommands.dbsize();
+        assertThat(dbsize).isEqualTo(0);
+    }
+
+    @Test
     void flushdb() {
 
         writeKeysToTwoNodes();
 
         StepVerifier.create(commands.flushdb()).expectNext("OK").verifyComplete();
+
+        Long dbsize = syncCommands.dbsize();
+        assertThat(dbsize).isEqualTo(0);
+    }
+
+    @Test
+    void flushdbSync() {
+
+        writeKeysToTwoNodes();
+
+        StepVerifier.create(commands.flushdb(FlushMode.SYNC)).expectNext("OK").verifyComplete();
+
+        Long dbsize = syncCommands.dbsize();
+        assertThat(dbsize).isEqualTo(0);
+    }
+
+    @Test
+    void flushdbAsync() {
+
+        writeKeysToTwoNodes();
+
+        StepVerifier.create(commands.flushdb(FlushMode.ASYNC)).expectNext("OK").verifyComplete();
 
         Long dbsize = syncCommands.dbsize();
         assertThat(dbsize).isEqualTo(0);

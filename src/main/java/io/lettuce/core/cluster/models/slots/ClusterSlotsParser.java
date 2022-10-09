@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,21 @@
  */
 package io.lettuce.core.cluster.models.slots;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.cluster.models.partitions.RedisClusterNode;
 
 /**
- * Parser for Redis <a href="http://redis.io/commands/cluster-slots">CLUSTER SLOTS</a> command output.
+ * Parser for Redis <a href="https://redis.io/commands/cluster-slots">CLUSTER SLOTS</a> command output.
  *
  * @author Mark Paluch
  * @since 3.0

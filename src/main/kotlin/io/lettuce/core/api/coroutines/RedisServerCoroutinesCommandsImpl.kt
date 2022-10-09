@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,7 @@
 
 package io.lettuce.core.api.coroutines
 
-import io.lettuce.core.ExperimentalLettuceCoroutinesApi
-import io.lettuce.core.FlushMode
-import io.lettuce.core.KillArgs
-import io.lettuce.core.TrackingArgs
-import io.lettuce.core.UnblockType
+import io.lettuce.core.*
 import io.lettuce.core.api.reactive.RedisServerReactiveCommands
 import io.lettuce.core.protocol.CommandType
 import kotlinx.coroutines.flow.toList
@@ -60,6 +56,8 @@ internal class RedisServerCoroutinesCommandsImpl<K : Any, V : Any>(internal val 
 
     override suspend fun clientList(): String? = ops.clientList().awaitFirstOrNull()
 
+    override suspend fun clientNoEvict(on: Boolean): String? = ops.clientNoEvict(on).awaitFirstOrNull()
+
     override suspend fun clientPause(timeout: Long): String? = ops.clientPause(timeout).awaitFirstOrNull()
 
     override suspend fun clientSetname(name: K): String? = ops.clientSetname(name).awaitFirstOrNull()
@@ -78,11 +76,15 @@ internal class RedisServerCoroutinesCommandsImpl<K : Any, V : Any>(internal val 
 
     override suspend fun configGet(parameter: String): Map<String, String>? = ops.configGet(parameter).awaitFirstOrNull()
 
+    override suspend fun configGet(vararg parameters: String): Map<String, String>? = ops.configGet(*parameters).awaitFirstOrNull()
+
     override suspend fun configResetstat(): String? = ops.configResetstat().awaitFirstOrNull()
 
     override suspend fun configRewrite(): String? = ops.configRewrite().awaitFirstOrNull()
 
     override suspend fun configSet(parameter: String, value: String): String? = ops.configSet(parameter, value).awaitFirstOrNull()
+
+    override suspend fun configSet(kvs: Map<String, String>): String? = ops.configSet(kvs).awaitFirstOrNull()
 
     override suspend fun dbsize(): Long? = ops.dbsize().awaitFirstOrNull()
 
@@ -116,23 +118,37 @@ internal class RedisServerCoroutinesCommandsImpl<K : Any, V : Any>(internal val 
 
     override suspend fun info(): String? = ops.info().awaitFirstOrNull()
 
-    override suspend fun info(section: String): String? = ops.info(section).awaitFirstOrNull()
+    override suspend fun info(section: String): String? =
+        ops.info(section).awaitFirstOrNull()
 
     override suspend fun lastsave(): Date? = ops.lastsave().awaitFirstOrNull()
 
-    override suspend fun memoryUsage(key: K): Long? = ops.memoryUsage(key).awaitFirstOrNull()
+    override suspend fun memoryUsage(key: K): Long? =
+        ops.memoryUsage(key).awaitFirstOrNull()
+
+    override suspend fun replicaof(host: String, port: Int): String? =
+        ops.replicaof(host, port).awaitFirstOrNull()
+
+    override suspend fun replicaofNoOne(): String? =
+        ops.replicaofNoOne().awaitFirstOrNull()
 
     override suspend fun save(): String? = ops.save().awaitFirstOrNull()
 
-    override suspend fun shutdown(save: Boolean) = ops.shutdown(save).awaitFirstOrNull().let { Unit }
+    override suspend fun shutdown(save: Boolean) =
+        ops.shutdown(save).awaitFirstOrNull().let { Unit }
 
-    override suspend fun slaveof(host: String, port: Int): String? = ops.slaveof(host, port).awaitFirstOrNull()
+    override suspend fun shutdown(args: ShutdownArgs) =
+        ops.shutdown(args).awaitFirstOrNull().let { Unit }
+
+    override suspend fun slaveof(host: String, port: Int): String? =
+        ops.slaveof(host, port).awaitFirstOrNull()
 
     override suspend fun slaveofNoOne(): String? = ops.slaveofNoOne().awaitFirstOrNull()
 
     override suspend fun slowlogGet(): List<Any> = ops.slowlogGet().asFlow().toList()
 
-    override suspend fun slowlogGet(count: Int): List<Any> = ops.slowlogGet(count).asFlow().toList()
+    override suspend fun slowlogGet(count: Int): List<Any> =
+        ops.slowlogGet(count).asFlow().toList()
 
     override suspend fun slowlogLen(): Long? = ops.slowlogLen().awaitFirstOrNull()
 

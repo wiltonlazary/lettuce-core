@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.cluster.models.partitions.Partitions;
 import io.lettuce.core.cluster.models.partitions.RedisClusterNode;
-import io.lettuce.core.cluster.topology.TopologyComparators.SortAction;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.internal.ExceptionFactory;
 import io.lettuce.core.internal.Exceptions;
@@ -104,12 +103,11 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
         }).thenCompose(connections -> {
 
             Requests requestedTopology = connections.requestTopology(commandTimeoutNs, TimeUnit.NANOSECONDS);
-            Requests requestedClients = connections.requestClients(commandTimeoutNs, TimeUnit.NANOSECONDS);
-            return CompletableFuture.allOf(requestedTopology.allCompleted(), requestedClients.allCompleted())
-                    .thenCompose(ignore -> {
-
-                        NodeTopologyViews views = getNodeSpecificViews(requestedTopology, requestedClients);
-
+            Requests requestedInfo = connections.requestInfo(commandTimeoutNs, TimeUnit.NANOSECONDS);
+            return CompletableFuture.allOf(requestedTopology.allCompleted(), requestedInfo.allCompleted())
+                    .thenApplyAsync(ignore -> getNodeSpecificViews(requestedTopology, requestedInfo),
+                            clientResources.eventExecutorGroup())
+                    .thenCompose(views -> {
                         if (discovery && isEventLoopActive()) {
 
                             Set<RedisURI> allKnownUris = views.getClusterNodes();
@@ -127,14 +125,12 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
 
                                 Requests additionalTopology = newConnections
                                         .requestTopology(commandTimeoutNs, TimeUnit.NANOSECONDS).mergeWith(requestedTopology);
-                                Requests additionalClients = newConnections
-                                        .requestClients(commandTimeoutNs, TimeUnit.NANOSECONDS).mergeWith(requestedClients);
+                                Requests additionalInfo = newConnections.requestInfo(commandTimeoutNs, TimeUnit.NANOSECONDS)
+                                        .mergeWith(requestedInfo);
                                 return CompletableFuture
-                                        .allOf(additionalTopology.allCompleted(), additionalClients.allCompleted())
-                                        .thenApply(ignore2 -> {
-
-                                            return getNodeSpecificViews(additionalTopology, additionalClients);
-                                        });
+                                        .allOf(additionalTopology.allCompleted(), additionalInfo.allCompleted())
+                                        .thenApplyAsync(ignore2 -> getNodeSpecificViews(additionalTopology, additionalInfo),
+                                                clientResources.eventExecutorGroup());
                             });
                         }
 
@@ -218,12 +214,11 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
         return StreamSupport.stream(seed.spliterator(), false).collect(Collectors.toCollection(HashSet::new));
     }
 
-    NodeTopologyViews getNodeSpecificViews(Requests requestedTopology, Requests requestedClients) {
+    NodeTopologyViews getNodeSpecificViews(Requests requestedTopology, Requests requestedInfo) {
 
         List<RedisClusterNodeSnapshot> allNodes = new ArrayList<>();
 
-        Map<String, Long> latencies = new HashMap<>();
-        Map<String, Integer> clientCountByNodeId = new HashMap<>();
+        Map<String, NodeTopologyView> self = new HashMap<>();
 
         Set<RedisURI> nodes = requestedTopology.nodes();
 
@@ -231,7 +226,7 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
         for (RedisURI nodeUri : nodes) {
 
             try {
-                NodeTopologyView nodeTopologyView = NodeTopologyView.from(nodeUri, requestedTopology, requestedClients);
+                NodeTopologyView nodeTopologyView = NodeTopologyView.from(nodeUri, requestedTopology, requestedInfo);
 
                 if (!nodeTopologyView.isAvailable()) {
                     continue;
@@ -244,20 +239,14 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
                     node.addAlias(nodeUri);
                 }
 
+                self.put(node.getNodeId(), nodeTopologyView);
+
                 List<RedisClusterNodeSnapshot> nodeWithStats = new ArrayList<>(nodeTopologyView.getPartitions().size());
 
                 for (RedisClusterNode partition : nodeTopologyView.getPartitions()) {
 
                     if (validNode(partition)) {
-                        RedisClusterNodeSnapshot redisClusterNodeSnapshot = new RedisClusterNodeSnapshot(partition);
-                        nodeWithStats.add(redisClusterNodeSnapshot);
-
-                        if (partition.is(RedisClusterNode.NodeFlag.MYSELF)) {
-
-                            // record latency for later partition ordering
-                            latencies.put(partition.getNodeId(), nodeTopologyView.getLatency());
-                            clientCountByNodeId.put(partition.getNodeId(), nodeTopologyView.getConnectedClients());
-                        }
+                        nodeWithStats.add(new RedisClusterNodeSnapshot(partition));
                     }
                 }
 
@@ -275,15 +264,20 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
         }
 
         for (RedisClusterNodeSnapshot node : allNodes) {
-            node.setConnectedClients(clientCountByNodeId.get(node.getNodeId()));
-            node.setLatencyNs(latencies.get(node.getNodeId()));
+
+            if (!self.containsKey(node.getNodeId())) {
+                continue;
+            }
+
+            NodeTopologyView view = self.get(node.getNodeId());
+
+            node.setConnectedClients(view.getConnectedClients());
+            node.setReplOffset(view.getReplicationOffset());
+            node.setLatencyNs(view.getLatency());
         }
 
-        SortAction sortAction = SortAction.getSortAction();
         for (NodeTopologyView view : views) {
-
-            sortAction.sort(view.getPartitions());
-            view.getPartitions().updateCache();
+            view.postProcessPartitions();
         }
 
         return new NodeTopologyViews(views);
@@ -377,7 +371,7 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
 
     private static Set<RedisURI> difference(Set<RedisURI> allKnown, Set<RedisURI> seed) {
 
-       Set<RedisURI> result = new TreeSet<>(TopologyComparators.RedisURIComparator.INSTANCE);
+        Set<RedisURI> result = new TreeSet<>(TopologyComparators.RedisURIComparator.INSTANCE);
 
         for (RedisURI e : allKnown) {
             if (!seed.contains(e)) {
@@ -417,10 +411,6 @@ class DefaultClusterTopologyRefresh implements ClusterTopologyRefresh {
 
         public void addConnection(RedisURI uri, CompletableFuture<StatefulRedisConnection<String, String>> future) {
             CompletableFuture<StatefulRedisConnection<String, String>> existing = connections.put(uri, future);
-
-            if(existing != null){
-                System.out.println("faiiil!1");
-            }
         }
 
         @SuppressWarnings("rawtypes")

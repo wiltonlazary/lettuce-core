@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@ import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.*;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -39,6 +41,7 @@ import io.lettuce.core.KeyValue;
 import io.lettuce.core.KillArgs;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisFuture;
+import io.lettuce.core.ShutdownArgs;
 import io.lettuce.core.TestSupport;
 import io.lettuce.core.TrackingArgs;
 import io.lettuce.core.UnblockType;
@@ -69,6 +72,7 @@ import io.lettuce.test.settings.TestSettings;
 public class ServerCommandIntegrationTests extends TestSupport {
 
     private final RedisClient client;
+
     private final RedisCommands<String, String> redis;
 
     @Inject
@@ -198,6 +202,13 @@ public class ServerCommandIntegrationTests extends TestSupport {
     }
 
     @Test
+    @EnabledOnCommand("EVAL_RO")   // Redis 7.0
+    void clientNoEvict() {
+        assertThat(redis.clientNoEvict(true)).isEqualTo("OK");
+        assertThat(redis.clientNoEvict(false)).isEqualTo("OK");
+    }
+
+    @Test
     @EnabledOnCommand("ACL")
     void clientTracking() {
 
@@ -321,6 +332,13 @@ public class ServerCommandIntegrationTests extends TestSupport {
     }
 
     @Test
+    @EnabledOnCommand("EVAL_RO")    // Redis 7.0
+    void configGetMultipleParameters() {
+        assertThat(redis.configGet("maxmemory", "*max-*-entries*")).containsEntry("maxmemory", "0")
+                .containsEntry("hash-max-listpack-entries", "512");
+    }
+
+    @Test
     void configResetstat() {
         redis.get(key);
         redis.get(key);
@@ -337,6 +355,19 @@ public class ServerCommandIntegrationTests extends TestSupport {
     }
 
     @Test
+    @EnabledOnCommand("EVAL_RO")    // Redis 7.0
+    void configSetMultipleParameters() {
+        Map<String, String> original = redis.configGet("maxmemory", "hash-max-listpack-entries");
+        Map<String, String> config = new HashMap<>();
+        config.put("maxmemory", "1024");
+        config.put("hash-max-listpack-entries", "1024");
+        assertThat(redis.configSet(config)).isEqualTo("OK");
+        assertThat(redis.configGet("maxmemory", "hash-max-listpack-entries")).containsAllEntriesOf(config);
+        // recover
+        redis.configSet(original);
+    }
+
+    @Test
     void configRewrite() {
 
         String result = redis.configRewrite();
@@ -348,51 +379,6 @@ public class ServerCommandIntegrationTests extends TestSupport {
         assertThat(redis.dbsize()).isEqualTo(0);
         redis.set(key, value);
         assertThat(redis.dbsize()).isEqualTo(1);
-    }
-
-    @Test
-    @Disabled("Causes instabilities")
-    void debugCrashAndRecover() {
-        try {
-            assertThat(redis.debugCrashAndRecover(1L)).isNotNull();
-        } catch (Exception e) {
-            assertThat(e).hasMessageContaining("ERR failed to restart the server");
-        }
-    }
-
-    @Test
-    void debugHtstats() {
-        redis.set(key, value);
-        String result = redis.debugHtstats(0);
-        assertThat(result).contains("Dictionary");
-    }
-
-    @Test
-    void debugObject() {
-        redis.set(key, value);
-        redis.debugObject(key);
-    }
-
-    @Test
-    void debugReload() {
-        assertThat(redis.debugReload()).isEqualTo("OK");
-    }
-
-    @Test
-    @Disabled("Causes instabilities")
-    void debugRestart() {
-        try {
-            assertThat(redis.debugRestart(1L)).isNotNull();
-        } catch (Exception e) {
-            assertThat(e).hasMessageContaining("ERR failed to restart the server");
-        }
-    }
-
-    @Test
-    void debugSdslen() {
-        redis.set(key, value);
-        String result = redis.debugSdslen(key);
-        assertThat(result).contains("key_sds_len");
     }
 
     @Test
@@ -468,6 +454,18 @@ public class ServerCommandIntegrationTests extends TestSupport {
     }
 
     @Test
+    void replicaof() {
+
+        assertThat(redis.replicaof(TestSettings.host(), 0)).isEqualTo("OK");
+        assertThat(redis.replicaofNoOne()).isEqualTo("OK");
+    }
+
+    @Test
+    void replicaofNoOne() {
+        assertThat(redis.replicaofNoOne()).isEqualTo("OK");
+    }
+
+    @Test
     void save() {
 
         Wait.untilTrue(this::noSaveInProgress).waitOrTimeout();
@@ -479,7 +477,7 @@ public class ServerCommandIntegrationTests extends TestSupport {
     void slaveof() {
 
         assertThat(redis.slaveof(TestSettings.host(), 0)).isEqualTo("OK");
-        redis.slaveofNoOne();
+        assertThat(redis.slaveofNoOne()).isEqualTo("OK");
     }
 
     @Test
@@ -549,10 +547,17 @@ public class ServerCommandIntegrationTests extends TestSupport {
         assertThat(redis.get(key)).isEqualTo("value1");
     }
 
+    @Test
+    @Disabled("Run me manually") // Redis 7.0
+    void shutdown() {
+        redis.shutdown(new ShutdownArgs().save(true).now());
+    }
+
     private boolean noSaveInProgress() {
 
         String info = redis.info();
 
         return !info.contains("aof_rewrite_in_progress:1") && !info.contains("rdb_bgsave_in_progress:1");
     }
+
 }

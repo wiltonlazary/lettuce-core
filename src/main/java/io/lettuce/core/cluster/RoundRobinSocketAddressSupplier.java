@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
  * Round-Robin socket address supplier. Cluster nodes are iterated circular/infinitely.
  *
  * @author Mark Paluch
+ * @author Christian Lang
  */
 class RoundRobinSocketAddressSupplier implements Supplier<SocketAddress> {
 
@@ -44,6 +45,7 @@ class RoundRobinSocketAddressSupplier implements Supplier<SocketAddress> {
 
     private final RoundRobin<RedisClusterNode> roundRobin;
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public RoundRobinSocketAddressSupplier(Supplier<Partitions> partitions,
             Function<? extends Collection<RedisClusterNode>, Collection<RedisClusterNode>> sortFunction,
             ClientResources clientResources) {
@@ -52,7 +54,8 @@ class RoundRobinSocketAddressSupplier implements Supplier<SocketAddress> {
         LettuceAssert.notNull(sortFunction, "Sort-Function must not be null");
 
         this.partitions = partitions;
-        this.roundRobin = new RoundRobin<>();
+        this.roundRobin = new RoundRobin<>(
+                (l, r) -> l.getUri() == r.getUri() || (l.getUri() != null && l.getUri().equals(r.getUri())));
         this.sortFunction = (Function) sortFunction;
         this.clientResources = clientResources;
         resetRoundRobin(partitions.get());

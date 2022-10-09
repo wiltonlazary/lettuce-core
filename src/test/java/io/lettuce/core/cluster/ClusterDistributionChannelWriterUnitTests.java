@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,10 +33,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import io.lettuce.core.RedisChannelWriter;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.CommandListenerWriter;
 import io.lettuce.core.StatefulRedisConnectionImpl;
+import io.lettuce.core.TimeoutOptions;
 import io.lettuce.core.api.StatefulRedisConnection;
-import io.lettuce.core.cluster.ClusterConnectionProvider.Intent;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.event.EventBus;
 import io.lettuce.core.internal.HostAndPort;
@@ -44,7 +45,10 @@ import io.lettuce.core.output.ValueOutput;
 import io.lettuce.core.protocol.AsyncCommand;
 import io.lettuce.core.protocol.Command;
 import io.lettuce.core.protocol.CommandArgs;
+import io.lettuce.core.protocol.CommandExpiryWriter;
 import io.lettuce.core.protocol.CommandType;
+import io.lettuce.core.protocol.ConnectionIntent;
+import io.lettuce.core.protocol.DefaultEndpoint;
 import io.lettuce.core.protocol.RedisCommand;
 import io.lettuce.core.resource.ClientResources;
 
@@ -59,7 +63,7 @@ import io.lettuce.core.resource.ClientResources;
 class ClusterDistributionChannelWriterUnitTests {
 
     @Mock
-    private RedisChannelWriter defaultWriter;
+    private DefaultEndpoint defaultWriter;
 
     @Mock
     private EventBus eventBus;
@@ -133,15 +137,15 @@ class ClusterDistributionChannelWriterUnitTests {
         RedisCommand<String, String, String> set = new Command<>(CommandType.SET, null);
         RedisCommand<String, String, String> mset = new Command<>(CommandType.MSET, null);
 
-        assertThat(ClusterDistributionChannelWriter.getIntent(Arrays.asList(set, mset))).isEqualTo(Intent.WRITE);
+        assertThat(ClusterDistributionChannelWriter.getIntent(Arrays.asList(set, mset))).isEqualTo(ConnectionIntent.WRITE);
 
-        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.singletonList(set))).isEqualTo(Intent.WRITE);
+        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.singletonList(set))).isEqualTo(ConnectionIntent.WRITE);
     }
 
     @Test
     void shouldReturnDefaultIntentForNoCommands() {
 
-        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.emptyList())).isEqualTo(Intent.WRITE);
+        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.emptyList())).isEqualTo(ConnectionIntent.WRITE);
     }
 
     @Test
@@ -150,9 +154,9 @@ class ClusterDistributionChannelWriterUnitTests {
         RedisCommand<String, String, String> get = new Command<>(CommandType.GET, null);
         RedisCommand<String, String, String> mget = new Command<>(CommandType.MGET, null);
 
-        assertThat(ClusterDistributionChannelWriter.getIntent(Arrays.asList(get, mget))).isEqualTo(Intent.READ);
+        assertThat(ClusterDistributionChannelWriter.getIntent(Arrays.asList(get, mget))).isEqualTo(ConnectionIntent.READ);
 
-        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.singletonList(get))).isEqualTo(Intent.READ);
+        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.singletonList(get))).isEqualTo(ConnectionIntent.READ);
     }
 
     @Test
@@ -161,14 +165,29 @@ class ClusterDistributionChannelWriterUnitTests {
         RedisCommand<String, String, String> set = new Command<>(CommandType.SET, null);
         RedisCommand<String, String, String> mget = new Command<>(CommandType.MGET, null);
 
-        assertThat(ClusterDistributionChannelWriter.getIntent(Arrays.asList(set, mget))).isEqualTo(Intent.WRITE);
+        assertThat(ClusterDistributionChannelWriter.getIntent(Arrays.asList(set, mget))).isEqualTo(ConnectionIntent.WRITE);
 
-        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.singletonList(set))).isEqualTo(Intent.WRITE);
+        assertThat(ClusterDistributionChannelWriter.getIntent(Collections.singletonList(set))).isEqualTo(ConnectionIntent.WRITE);
     }
 
     @Test
     void shouldWriteCommandListWhenAsking() {
         verifyWriteCommandCountWhenRedirecting(false);
+    }
+
+    @Test
+    void shouldDisconnectWrappedEndpoint() {
+
+        CommandListenerWriter listenerWriter = new CommandListenerWriter(defaultWriter, Collections.emptyList());
+        CommandExpiryWriter expiryWriter = new CommandExpiryWriter(listenerWriter,
+                ClientOptions.builder().timeoutOptions(TimeoutOptions.enabled()).build(), clientResources);
+
+        ClusterDistributionChannelWriter writer = new ClusterDistributionChannelWriter(expiryWriter, ClientOptions.create(),
+                clusterEventListener);
+
+        writer.disconnectDefaultEndpoint();
+
+        verify(defaultWriter).disconnect();
     }
 
     @Test
@@ -191,7 +210,7 @@ class ClusterDistributionChannelWriterUnitTests {
         when(connectFuture.isDone()).thenReturn(true);
         when(connectFuture.isCompletedExceptionally()).thenReturn(false);
         when(connectFuture.join()).thenReturn(connection);
-        when(pooledClusterConnectionProvider.getConnectionAsync(any(Intent.class), anyString(), anyInt()))
+        when(pooledClusterConnectionProvider.getConnectionAsync(any(ConnectionIntent.class), anyString(), anyInt()))
                 .thenReturn(connectFuture);
         when(connection.getChannelWriter()).thenReturn(clusterNodeEndpoint);
 

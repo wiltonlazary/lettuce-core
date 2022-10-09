@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,8 @@ class FullJitterDelay extends ExponentialDelay {
     public Duration createDelay(long attempt) {
 
         long upperTarget = targetTimeUnit.convert(upper.toNanos(), TimeUnit.NANOSECONDS);
-        long temp = Math.min(upperTarget, base * calculatePowerOfTwo(attempt));
+        long upperBase = base * calculatePowerOfTwo(attempt);
+        long temp = Math.min(upperTarget, 0 > upperBase ? upperTarget : upperBase);
         long delay = temp / 2 + randomBetween(0, temp / 2);
         return applyBounds(Duration.ofNanos(targetTimeUnit.toNanos(delay)));
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -80,7 +79,7 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
  * @since 3.0
  * @see ClientResources
  */
-public abstract class AbstractRedisClient {
+public abstract class AbstractRedisClient implements AutoCloseable {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractRedisClient.class);
 
@@ -137,7 +136,9 @@ public abstract class AbstractRedisClient {
      * Returns the default {@link Duration timeout} for commands.
      *
      * @return the default {@link Duration timeout} for commands.
+     * @deprecated since 6.2, use {@link RedisURI#getTimeout()} to control timeouts.
      */
+    @Deprecated
     public Duration getDefaultTimeout() {
         return defaultTimeout;
     }
@@ -148,7 +149,9 @@ public abstract class AbstractRedisClient {
      *
      * @param timeout default connection timeout, must not be {@code null}.
      * @since 5.0
+     * @deprecated since 6.2, use {@link RedisURI#getTimeout()} to control timeouts.
      */
+    @Deprecated
     public void setDefaultTimeout(Duration timeout) {
 
         LettuceAssert.notNull(timeout, "Timeout duration must not be null");
@@ -163,7 +166,7 @@ public abstract class AbstractRedisClient {
      *
      * @param timeout Default connection timeout.
      * @param unit Unit of time for the timeout.
-     * @deprecated since 5.0, use {@link #setDefaultTimeout(Duration)}.
+     * @deprecated since 6.2, use {@link RedisURI#getTimeout()} to control timeouts.
      */
     @Deprecated
     public void setDefaultTimeout(long timeout, TimeUnit unit) {
@@ -390,10 +393,12 @@ public abstract class AbstractRedisClient {
         CompletableFuture<SocketAddress> socketAddressFuture = new CompletableFuture<>();
         CompletableFuture<Channel> channelReadyFuture = new CompletableFuture<>();
 
+        String uriString = connectionBuilder.getRedisURI().toString();
+
         EventRecorder.getInstance().record(
-                new ConnectionCreatedEvent(connectionBuilder.getRedisURI().toString(), connectionBuilder.endpoint().getId()));
+                new ConnectionCreatedEvent(uriString, connectionBuilder.endpoint().getId()));
         EventRecorder.RecordableEvent event = EventRecorder.getInstance()
-                .start(new ConnectEvent(connectionBuilder.getRedisURI().toString(), connectionBuilder.endpoint().getId()));
+                .start(new ConnectEvent(uriString, connectionBuilder.endpoint().getId()));
 
         channelReadyFuture.whenComplete((channel, throwable) -> {
             event.record();
@@ -462,17 +467,7 @@ public abstract class AbstractRedisClient {
 
                 logger.debug("Connecting to Redis at {}, initialization: {}", redisAddress, throwable);
                 connectionBuilder.endpoint().initialState();
-                Throwable failure;
-
-                if (throwable instanceof RedisConnectionException) {
-                    failure = throwable;
-                } else if (throwable instanceof TimeoutException) {
-                    failure = new RedisConnectionException(
-                            "Could not initialize channel within " + connectionBuilder.getTimeout(), throwable);
-                } else {
-                    failure = throwable;
-                }
-                channelReadyFuture.completeExceptionally(failure);
+                channelReadyFuture.completeExceptionally(throwable);
             });
         });
     }
@@ -487,6 +482,11 @@ public abstract class AbstractRedisClient {
      */
     public void shutdown() {
         shutdown(0, 2, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public void close() {
+        shutdown();
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,11 @@ internal class RedisSetCoroutinesCommandsImpl<K : Any, V : Any>(internal val ops
     override suspend fun sdiffstore(destination: K, vararg keys: K): Long? = ops.sdiffstore(destination, *keys).awaitFirstOrNull()
 
     override fun sinter(vararg keys: K): Flow<V> = ops.sinter(*keys).asFlow()
+
+    override suspend fun sintercard(vararg keys: K): Long? = ops.sintercard(*keys).awaitFirstOrNull()
+
+    override suspend fun sintercard(limit: Long, vararg keys: K): Long? =
+        ops.sintercard(limit, *keys).awaitFirstOrNull()
 
     override suspend fun sinterstore(destination: K, vararg keys: K): Long? = ops.sinterstore(destination, *keys).awaitFirstOrNull()
 

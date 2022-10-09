@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
- * A scalable and thread-safe <a href="http://redis.io/">Redis</a> client supporting synchronous, asynchronous and reactive
+ * A scalable and thread-safe <a href="https://redis.io/">Redis</a> client supporting synchronous, asynchronous and reactive
  * execution models. Multiple threads may share one connection if they avoid blocking and transactional operations such as BLPOP
  * and MULTI/EXEC.
  * <p>
@@ -270,7 +270,7 @@ public class RedisClient extends AbstractRedisClient {
         assertNotNull(codec);
         checkValidRedisURI(redisURI);
 
-        logger.debug("Trying to get a Redis connection for: " + redisURI);
+        logger.debug("Trying to get a Redis connection for: {}", redisURI);
 
         DefaultEndpoint endpoint = new DefaultEndpoint(getOptions(), getResources());
         RedisChannelWriter writer = endpoint;
@@ -333,7 +333,7 @@ public class RedisClient extends AbstractRedisClient {
      * @return A new stateful pub/sub connection
      */
     public StatefulRedisPubSubConnection<String, String> connectPubSub() {
-        return getConnection(connectPubSubAsync(newStringStringCodec(), redisURI, getDefaultTimeout()));
+        return getConnection(connectPubSubAsync(newStringStringCodec(), this.redisURI, getDefaultTimeout()));
     }
 
     /**
@@ -360,7 +360,7 @@ public class RedisClient extends AbstractRedisClient {
      */
     public <K, V> StatefulRedisPubSubConnection<K, V> connectPubSub(RedisCodec<K, V> codec) {
         checkForRedisURI();
-        return getConnection(connectPubSubAsync(codec, redisURI, getDefaultTimeout()));
+        return getConnection(connectPubSubAsync(codec, this.redisURI, getDefaultTimeout()));
     }
 
     /**
@@ -447,7 +447,7 @@ public class RedisClient extends AbstractRedisClient {
      */
     public <K, V> StatefulRedisSentinelConnection<K, V> connectSentinel(RedisCodec<K, V> codec) {
         checkForRedisURI();
-        return getConnection(connectSentinelAsync(codec, redisURI, getDefaultTimeout()));
+        return getConnection(connectSentinelAsync(codec, this.redisURI, getDefaultTimeout()));
     }
 
     /**
@@ -738,7 +738,7 @@ public class RedisClient extends AbstractRedisClient {
 
     private Mono<SocketAddress> lookupRedis(RedisURI sentinelUri) {
 
-        Duration timeout = getDefaultTimeout();
+        Duration timeout = sentinelUri.getTimeout();
 
         return Mono.usingWhen(
                 Mono.fromCompletionStage(() -> connectSentinelAsync(newStringStringCodec(), sentinelUri, timeout)), c -> {

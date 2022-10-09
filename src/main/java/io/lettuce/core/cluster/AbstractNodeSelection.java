@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ abstract class AbstractNodeSelection<API, CMD, K, V> implements NodeSelectionSup
         return nodes().get(index);
     }
 
-    // This method is never called, the value is supplied by AOP magic.
+    // This method is never called, the value is supplied by AOP magic, see NodeSelectionInvocationHandler
     @Override
     public CMD commands() {
         return null;
@@ -72,7 +72,6 @@ abstract class AbstractNodeSelection<API, CMD, K, V> implements NodeSelectionSup
     }
 
     /**
-     *
      * @return {@link Map} between a {@link RedisClusterNode} to its actual {@link StatefulRedisConnection}.
      */
     protected Map<RedisClusterNode, CompletableFuture<? extends StatefulRedisConnection<K, V>>> statefulMap() {

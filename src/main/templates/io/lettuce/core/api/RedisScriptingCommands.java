@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,6 +80,19 @@ public interface RedisScriptingCommands<K, V> {
     <T> T eval(byte[] script, ScriptOutputType type, K[] keys, V... values);
 
     /**
+     * This is a read-only variant of the EVAL command that cannot execute commands that modify data.
+     *
+     * @param script Lua 5.1 script.
+     * @param type the type.
+     * @param keys the keys.
+     * @param values the values.
+     * @param <T> expected return type.
+     * @return script result.
+     * @since 6.2
+     */
+    <T> T evalReadOnly(byte[] script, ScriptOutputType type, K[] keys, V... values);
+
+    /**
      * Evaluates a script cached on the server side by its SHA1 digest.
      *
      * @param digest SHA1 of the script.
@@ -101,6 +114,19 @@ public interface RedisScriptingCommands<K, V> {
      * @return script result.
      */
     <T> T evalsha(String digest, ScriptOutputType type, K[] keys, V... values);
+
+    /**
+     * This is a read-only variant of the EVALSHA command that cannot execute commands that modify data.
+     *
+     * @param digest SHA1 of the script.
+     * @param type the type.
+     * @param keys the keys.
+     * @param values the values.
+     * @param <T> expected return type.
+     * @return script result.
+     * @since 6.2
+     */
+    <T> T evalshaReadOnly(String digest, ScriptOutputType type, K[] keys, V... values);
 
     /**
      * Check existence of scripts in the script cache.

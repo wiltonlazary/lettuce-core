@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import io.lettuce.core.protocol.CommandArgs;
 import io.lettuce.core.protocol.CommandType;
 
 /**
- * Argument list builder for the Redis <a href="http://redis.io/commands/getex">GETEX</a> command starting from Redis 6.2.
+ * Argument list builder for the Redis <a href="https://redis.io/commands/getex">GETEX</a> command starting from Redis 6.2.
  * Static import the methods from {@link Builder} and chain the method calls: {@code ex(10).nx()}.
  * <p>
  * {@link GetExArgs} is a mutable object and instances should be used only once to avoid shared mutable state.

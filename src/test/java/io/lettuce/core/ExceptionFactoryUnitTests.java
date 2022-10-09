@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,19 @@
  */
 package io.lettuce.core;
 
-import io.lettuce.core.internal.ExceptionFactory;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 import java.time.Duration;
 
 import org.junit.jupiter.api.Test;
 
+import io.lettuce.core.internal.ExceptionFactory;
+
 /**
+ * Unit tests for {@link ExceptionFactory}.
+ *
  * @author Mark Paluch
+ * @author Tobias Nehrlich
  */
 class ExceptionFactoryUnitTests {
 
@@ -67,6 +70,16 @@ class ExceptionFactoryUnitTests {
                 .hasMessage("LOADING foo bar").hasNoCause();
         assertThat(ExceptionFactory.createExecutionException("LOADING foo bar", new IllegalStateException()))
                 .isInstanceOf(RedisLoadingException.class).hasMessage("LOADING foo bar")
+                .hasRootCauseInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void shouldCreateReadOnlyException() {
+
+        assertThat(ExceptionFactory.createExecutionException("READONLY foo bar")).isInstanceOf(RedisReadOnlyException.class)
+                .hasMessage("READONLY foo bar").hasNoCause();
+        assertThat(ExceptionFactory.createExecutionException("READONLY foo bar", new IllegalStateException()))
+                .isInstanceOf(RedisReadOnlyException.class).hasMessage("READONLY foo bar")
                 .hasRootCauseInstanceOf(IllegalStateException.class);
     }
 

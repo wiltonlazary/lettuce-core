@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,8 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
 
     private long configEpoch;
 
+    private long replOffset;
+
     private BitSet slots;
 
     private final Set<NodeFlag> flags = EnumSet.noneOf(NodeFlag.class);
@@ -79,6 +81,7 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
         this.pingSentTimestamp = pingSentTimestamp;
         this.pongReceivedTimestamp = pongReceivedTimestamp;
         this.configEpoch = configEpoch;
+        this.replOffset = -1;
 
         setSlotBits(slots);
         setFlags(flags);
@@ -94,6 +97,7 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
         this.pingSentTimestamp = pingSentTimestamp;
         this.pongReceivedTimestamp = pongReceivedTimestamp;
         this.configEpoch = configEpoch;
+        this.replOffset = -1;
 
         this.slots = new BitSet(slots.length());
         this.slots.or(slots);
@@ -112,6 +116,7 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
         this.pingSentTimestamp = redisClusterNode.pingSentTimestamp;
         this.pongReceivedTimestamp = redisClusterNode.pongReceivedTimestamp;
         this.configEpoch = redisClusterNode.configEpoch;
+        this.replOffset = redisClusterNode.replOffset;
         this.aliases.addAll(redisClusterNode.aliases);
 
         if (redisClusterNode.slots != null && !redisClusterNode.slots.isEmpty()) {
@@ -148,6 +153,7 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
         return new RedisClusterNode(this);
     }
 
+    @Override
     public RedisURI getUri() {
         return uri;
     }
@@ -243,6 +249,20 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
         this.configEpoch = configEpoch;
     }
 
+    public long getReplOffset() {
+        return replOffset;
+    }
+
+    /**
+     * Sets the {@code replOffset}. Typically, obtained from {@code INFO REPLICATION master_repl_offset}. Can be {@code -1} in
+     * case it was not obtained from Redis or set in the data model.
+     *
+     * @param replOffset the {@code replOffset}
+     */
+    public void setReplOffset(long replOffset) {
+        this.replOffset = replOffset;
+    }
+
     /**
      * Return the slots as {@link List}. Note that this method creates a new {@link List} for each time it gets called.
      *
@@ -280,7 +300,8 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
             return;
         }
 
-        for (int i = 0; i < this.slots.length(); i++) {
+        int length = this.slots.length();
+        for (int i = 0; i < length; i++) {
 
             if (this.slots.get(i)) {
                 consumer.accept(i);
@@ -300,6 +321,10 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
         LettuceAssert.notNull(slots, "Slots must not be null");
 
         setSlotBits(slots);
+    }
+
+    void setSlots(BitSet slots) {
+        this.slots = slots;
     }
 
     private void setSlotBits(List<Integer> slots) {
@@ -442,6 +467,7 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
         sb.append(", pingSentTimestamp=").append(pingSentTimestamp);
         sb.append(", pongReceivedTimestamp=").append(pongReceivedTimestamp);
         sb.append(", configEpoch=").append(configEpoch);
+        sb.append(", replOffset=").append(replOffset);
         sb.append(", flags=").append(flags);
         sb.append(", aliases=").append(aliases);
         if (slots != null) {
@@ -470,7 +496,7 @@ public class RedisClusterNode implements Serializable, RedisNodeDescription {
          */
         @Deprecated
         MASTER, UPSTREAM, //
-        EVENTUAL_FAIL, FAIL, HANDSHAKE, NOADDR;
+        EVENTUAL_FAIL, FAIL, HANDSHAKE, NOADDR, LOADING, ONLINE;
     }
 
 }

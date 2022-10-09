@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -210,7 +210,7 @@ class CommandHandlerUnitTests {
         sut.setState(CommandHandler.LifecycleState.CLOSED);
 
         sut.exceptionCaught(context, new Exception());
-        verifyZeroInteractions(context);
+        verifyNoInteractions(context);
     }
 
     @Test
@@ -282,7 +282,7 @@ class CommandHandlerUnitTests {
         command.cancel();
         sut.write(context, command, promise);
 
-        verifyZeroInteractions(context);
+        verifyNoInteractions(context);
         assertThat(stack).isEmpty();
 
         verify(promise).trySuccess();
@@ -294,7 +294,7 @@ class CommandHandlerUnitTests {
         command.cancel();
         sut.write(context, Collections.singleton(command), promise);
 
-        verifyZeroInteractions(context);
+        verifyNoInteractions(context);
         assertThat(stack).isEmpty();
 
         verify(promise).trySuccess();
@@ -364,12 +364,55 @@ class CommandHandlerUnitTests {
     }
 
     @Test
+    void shouldConsiderQueueLimits() throws Exception {
+
+        sut = new CommandHandler(ClientOptions.builder().requestQueueSize(1).build(), clientResources, endpoint);
+        stack = (Queue) ReflectionTestUtils.getField(sut, "stack");
+
+        when(promise.isVoid()).thenReturn(true);
+
+        Command<String, String, String> command1 = new Command<>(CommandType.APPEND, new StatusOutput<>(StringCodec.UTF8),
+                null);
+
+        Command<String, String, String> command2 = new Command<>(CommandType.APPEND, new StatusOutput<>(StringCodec.UTF8),
+                null);
+
+        sut.write(context, command1, promise);
+        assertThatThrownBy(() -> sut.write(context, command2, promise)).isInstanceOf(RedisException.class);
+
+        verify(context).write(command1, promise);
+        verify(context, never()).write(command2, promise);
+    }
+
+    @Test
+    void shouldConsiderMaxQueueLimits() throws Exception {
+
+        sut = new CommandHandler(ClientOptions.builder().requestQueueSize(Integer.MAX_VALUE - 1).build(), clientResources,
+                endpoint);
+        stack = (Queue) ReflectionTestUtils.getField(sut, "stack");
+
+        when(promise.isVoid()).thenReturn(true);
+
+        Command<String, String, String> command1 = new Command<>(CommandType.APPEND, new StatusOutput<>(StringCodec.UTF8),
+                null);
+
+        Command<String, String, String> command2 = new Command<>(CommandType.APPEND, new StatusOutput<>(StringCodec.UTF8),
+                null);
+
+        sut.write(context, command1, promise);
+        sut.write(context, command2, promise);
+
+        verify(context).write(command1, promise);
+        verify(context).write(command2, promise);
+    }
+
+    @Test
     void shouldNotWriteCancelledCommandBatch() throws Exception {
 
         command.cancel();
         sut.write(context, Arrays.asList(command), promise);
 
-        verifyZeroInteractions(context);
+        verifyNoInteractions(context);
         assertThat((Collection) ReflectionTestUtils.getField(sut, "stack")).isEmpty();
     }
 

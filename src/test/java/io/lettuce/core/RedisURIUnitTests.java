@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 import io.lettuce.core.internal.LettuceSets;
+import reactor.core.publisher.Mono;
 
 /**
  * Unit tests for {@link RedisURI}
@@ -312,5 +313,19 @@ class RedisURIUnitTests {
 
         assertThat(target.getUsername()).isNull();
         assertThat(target.getPassword()).isEqualTo("bar".toCharArray());
+
+        RedisCredentialsProvider provider = () -> Mono
+                .just(RedisCredentials.just("suppliedUsername", "suppliedPassword".toCharArray()));
+
+        RedisURI sourceCp = new RedisURI();
+        sourceCp.setCredentialsProvider(provider);
+
+        RedisURI targetCp = new RedisURI();
+        targetCp.applyAuthentication(sourceCp);
+
+        assertThat(targetCp.getUsername()).isNull();
+        assertThat(targetCp.getPassword()).isNull();
+        assertThat(sourceCp.getCredentialsProvider()).isEqualTo(targetCp.getCredentialsProvider());
     }
+
 }

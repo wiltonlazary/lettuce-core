@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import io.lettuce.core.internal.LettuceAssert;
 import io.lettuce.core.protocol.RedisCommand;
 
 /**
- * Options for command timeouts. This options configure how and whether commands time out once they were dispatched. Command
+ * Options for command timeouts. These options configure how and whether commands time out once they were dispatched. Command
  * timeout begins:
  * <ul>
  * <li>When the command is sent successfully to the transport</li>

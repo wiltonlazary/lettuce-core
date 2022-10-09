@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import io.lettuce.core.protocol.CommandType;
 import io.lettuce.core.protocol.ProtocolKeyword;
 
 /**
- * Argument list builder for the Redis <a href="http://redis.io/commands/bitfield">BITFIELD</a> command.
+ * Argument list builder for the Redis <a href="https://redis.io/commands/bitfield">BITFIELD</a> command.
  * <p>
  * {@link BitFieldArgs} is a mutable object and instances should be used only once to avoid shared mutable state.
  *
@@ -642,7 +642,7 @@ public class BitFieldArgs implements CompositeArgument {
     }
 
     /**
-     * Represents a bit field offset. See also <a href="http://redis.io/commands/bitfield#bits-and-positional-offsets">Bits and
+     * Represents a bit field offset. See also <a href="https://redis.io/commands/bitfield#bits-and-positional-offsets">Bits and
      * positional offsets</a>
      *
      * @since 4.3

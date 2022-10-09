@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,15 +113,15 @@ class Connections {
     }
 
     /*
-     * Initiate {@code INFO CLIENTS} on all connections and return the {@link Requests}.
+     * Initiate {@code INFO} on all connections and return the {@link Requests}.
      * @return the {@link Requests}.
      */
-    public Requests requestClients(long timeout, TimeUnit timeUnit) {
+    public Requests requestInfo(long timeout, TimeUnit timeUnit) {
 
         return doRequest(() -> {
 
             Command<String, String, String> command = new Command<>(CommandType.INFO, new StatusOutput<>(StringCodec.UTF8),
-                    new CommandArgs<>(StringCodec.UTF8).add("CLIENTS"));
+                    new CommandArgs<>(StringCodec.UTF8));
             return new TimedAsyncCommand<>(command);
         }, timeout, timeUnit);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,6 +108,15 @@ public interface NodeSelectionServerAsyncCommands<K, V> {
     AsyncExecutions<String> clientList();
 
     /**
+     * Sets the client eviction mode for the current connection.
+     *
+     * @param on {@code true} will turn eviction mode on, and {@code false} will turn it off.
+     * @return String simple-string-reply {@code OK}.
+     * @since 6.2
+     */
+    AsyncExecutions<String> clientNoEvict(boolean on);
+
+    /**
      * Stop processing commands from clients for some time.
      *
      * @param timeout the timeout value in milliseconds.
@@ -182,6 +191,15 @@ public interface NodeSelectionServerAsyncCommands<K, V> {
     AsyncExecutions<Map<String, String>> configGet(String parameter);
 
     /**
+     * Get the value of multiple pattern parameters.
+     *
+     * @param parameters patterns names of Redis server's configuration.
+     * @return Map&lt;String, String&gt; bulk-string-reply.
+     * @since 6.2
+     */
+    AsyncExecutions<Map<String, String>> configGet(String... parameters);
+
+    /**
      * Reset the stats returned by INFO.
      *
      * @return String simple-string-reply always {@code OK}.
@@ -204,6 +222,15 @@ public interface NodeSelectionServerAsyncCommands<K, V> {
      * @return String simple-string-reply: {@code OK} when the configuration was set properly. Otherwise an error is returned.
      */
     AsyncExecutions<String> configSet(String parameter, String value);
+
+    /**
+     * Set multiple parameters to the given value.
+     *
+     * @param kvs the parameter name and value.
+     * @return String simple-string-reply: {@code OK} when the configuration was set properly. Otherwise an error is returned.
+     * @since 6.2
+     */
+    AsyncExecutions<String> configSet(Map<String, String> kvs);
 
     /**
      * Return the number of keys in the selected database.
@@ -340,6 +367,24 @@ public interface NodeSelectionServerAsyncCommands<K, V> {
     AsyncExecutions<Long> memoryUsage(K key);
 
     /**
+     * Make the server a replica of another instance.
+     *
+     * @param host the host type: string.
+     * @param port the port type: string.
+     * @return String simple-string-reply.
+     * @since 6.1.7
+     */
+    AsyncExecutions<String> replicaof(String host, int port);
+
+    /**
+     * Promote server as master.
+     *
+     * @return String simple-string-reply.
+     * @since 6.1.7
+     */
+    AsyncExecutions<String> replicaofNoOne();
+
+    /**
      * Synchronously save the dataset to disk.
      *
      * @return String simple-string-reply The commands returns OK on success.
@@ -347,11 +392,12 @@ public interface NodeSelectionServerAsyncCommands<K, V> {
     AsyncExecutions<String> save();
 
     /**
-     * Make the server a replica of another instance, or promote it as master.
+     * Make the server a replica of another instance.
      *
      * @param host the host type: string.
      * @param port the port type: string.
      * @return String simple-string-reply.
+     * @deprecated since 6.1.7, use {@link #replicaof(String, int)} instead.
      */
     AsyncExecutions<String> slaveof(String host, int port);
 
@@ -359,6 +405,7 @@ public interface NodeSelectionServerAsyncCommands<K, V> {
      * Promote server as master.
      *
      * @return String simple-string-reply.
+     * @deprecated since 6.1.7, use {@link #replicaofNoOne()} instead.
      */
     AsyncExecutions<String> slaveofNoOne();
 

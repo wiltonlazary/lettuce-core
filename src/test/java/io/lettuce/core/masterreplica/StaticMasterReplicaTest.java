@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,11 +79,11 @@ class StaticMasterReplicaTest extends AbstractRedisClientTest {
 
         WithPassword.enableAuthentication(this.connection1);
         this.connection1.auth(passwd);
-        this.connection1.configSet("masterauth", passwd);
+        this.connection1.configSet("masterauth", passwd.toString());
 
         WithPassword.enableAuthentication(this.connection2);
         this.connection2.auth(passwd);
-        this.connection2.configSet("masterauth", passwd);
+        this.connection2.configSet("masterauth", passwd.toString());
 
         node1.setPassword(passwd);
         node2.setPassword(passwd);

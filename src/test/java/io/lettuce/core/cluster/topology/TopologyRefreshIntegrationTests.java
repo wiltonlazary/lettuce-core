@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,12 @@
  */
 package io.lettuce.core.cluster.topology;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
 import javax.inject.Inject;
@@ -32,7 +29,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import io.lettuce.test.ReflectionTestUtils;
 
 import io.lettuce.category.SlowTests;
 import io.lettuce.core.RedisClient;
@@ -55,7 +51,6 @@ import io.lettuce.test.LettuceExtension;
 import io.lettuce.test.Wait;
 import io.lettuce.test.resource.FastShutdown;
 import io.lettuce.test.settings.TestSettings;
-import io.netty.util.concurrent.ScheduledFuture;
 
 /**
  * Test for topology refreshing.
@@ -68,10 +63,13 @@ import io.netty.util.concurrent.ScheduledFuture;
 class TopologyRefreshIntegrationTests extends TestSupport {
 
     private static final String host = TestSettings.hostAddr();
+
     private final RedisClient client;
 
     private RedisClusterClient clusterClient;
+
     private RedisCommands<String, String> redis1;
+
     private RedisCommands<String, String> redis2;
 
     @Inject
@@ -81,8 +79,8 @@ class TopologyRefreshIntegrationTests extends TestSupport {
 
     @BeforeEach
     void openConnection() {
-        clusterClient = RedisClusterClient.create(client.getResources(), RedisURI.Builder
-                .redis(host, ClusterTestSettings.port1).build());
+        clusterClient = RedisClusterClient.create(client.getResources(),
+                RedisURI.Builder.redis(host, ClusterTestSettings.port1).build());
         redis1 = client.connect(RedisURI.Builder.redis(ClusterTestSettings.host, ClusterTestSettings.port1).build()).sync();
         redis2 = client.connect(RedisURI.Builder.redis(ClusterTestSettings.host, ClusterTestSettings.port2).build()).sync();
     }
@@ -207,7 +205,7 @@ class TopologyRefreshIntegrationTests extends TestSupport {
     }
 
     @Test
-    void adaptiveTopologyUpdatetUsesTimeout() {
+    void adaptiveTopologyUpdateUsesTimeout() {
 
         ClusterTopologyRefreshOptions topologyRefreshOptions = ClusterTopologyRefreshOptions.builder()//
                 .adaptiveRefreshTriggersTimeout(500, TimeUnit.MILLISECONDS)//
@@ -276,7 +274,7 @@ class TopologyRefreshIntegrationTests extends TestSupport {
         assertThat(clusterClient.getPartitions().getPartitionByNodeId(node1.getNodeId()).getSlots()).hasSize(0);
         assertThat(clusterClient.getPartitions().getPartitionByNodeId(node2.getNodeId()).getSlots()).hasSize(16384);
 
-        clusterConnection.set("b", value); // slot 3300
+        connection.reactive().set("b", value).toFuture();// slot 3300
 
         Wait.untilEquals(12000, () -> clusterClient.getPartitions().getPartitionByNodeId(node1.getNodeId()).getSlots().size())
                 .waitOrTimeout();
@@ -311,4 +309,5 @@ class TopologyRefreshIntegrationTests extends TestSupport {
         }
         clusterConnection.getStatefulConnection().close();
     }
+
 }

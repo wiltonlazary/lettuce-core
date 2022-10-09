@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,9 @@ public interface RedisAdvancedClusterReactiveCommands<K, V> extends RedisCluster
 
     /**
      * @return the underlying connection.
+     * @since 6.2, will be removed with Lettuce 7 to avoid exposing the underlying connection.
      */
+    @Deprecated
     StatefulRedisClusterConnection<K, V> getStatefulConnection();
 
     /**
@@ -119,7 +121,7 @@ public interface RedisAdvancedClusterReactiveCommands<K, V> extends RedisCluster
      * Set multiple keys to multiple values, only if none of the keys exist with pipelining. Cross-slot keys will result in
      * multiple calls to the particular cluster nodes.
      *
-     * @param map the null
+     * @param map the map
      * @return Boolean integer-reply specifically:
      *
      *         {@code 1} if the all the keys were set. {@code 0} if no key was set (at least one key already existed).

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,12 +58,11 @@ import io.lettuce.core.protocol.RedisCommand;
  * @author Andrey Shlykov
  */
 @SuppressWarnings("unchecked")
-public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncCommands<K,V>,
-        RedisHashAsyncCommands<K, V>, RedisKeyAsyncCommands<K, V>, RedisStringAsyncCommands<K, V>,
-        RedisListAsyncCommands<K, V>, RedisSetAsyncCommands<K, V>, RedisSortedSetAsyncCommands<K, V>,
-        RedisScriptingAsyncCommands<K, V>, RedisServerAsyncCommands<K, V>, RedisHLLAsyncCommands<K, V>,
-        BaseRedisAsyncCommands<K, V>, RedisTransactionalAsyncCommands<K, V>, RedisGeoAsyncCommands<K, V>,
-        RedisClusterAsyncCommands<K, V> {
+public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncCommands<K, V>, RedisHashAsyncCommands<K, V>,
+        RedisKeyAsyncCommands<K, V>, RedisStringAsyncCommands<K, V>, RedisListAsyncCommands<K, V>, RedisSetAsyncCommands<K, V>,
+        RedisSortedSetAsyncCommands<K, V>, RedisScriptingAsyncCommands<K, V>, RedisServerAsyncCommands<K, V>,
+        RedisHLLAsyncCommands<K, V>, BaseRedisAsyncCommands<K, V>, RedisTransactionalAsyncCommands<K, V>,
+        RedisGeoAsyncCommands<K, V>, RedisClusterAsyncCommands<K, V> {
 
     private final StatefulConnection<K, V> connection;
 
@@ -93,6 +92,16 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @Override
     public RedisFuture<Long> aclDeluser(String... usernames) {
         return dispatch(commandBuilder.aclDeluser(usernames));
+    }
+
+    @Override
+    public RedisFuture<String> aclDryRun(String username, String command, String... args) {
+        return dispatch(commandBuilder.aclDryRun(username, command, args));
+    }
+
+    @Override
+    public RedisFuture<String> aclDryRun(String username, RedisCommand<K, V, ?> command) {
+        return dispatch(commandBuilder.aclDryRun(username, command));
     }
 
     @Override
@@ -262,6 +271,16 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<KeyValue<K, List<V>>> blmpop(long timeout, LMPopArgs args, K... keys) {
+        return dispatch(commandBuilder.blmpop(timeout, args, keys));
+    }
+
+    @Override
+    public RedisFuture<KeyValue<K, List<V>>> blmpop(double timeout, LMPopArgs args, K... keys) {
+        return dispatch(commandBuilder.blmpop(timeout, args, keys));
+    }
+
+    @Override
     public RedisFuture<KeyValue<K, V>> blpop(long timeout, K... keys) {
         return dispatch(commandBuilder.blpop(timeout, keys));
     }
@@ -322,6 +341,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<String> clientNoEvict(boolean on) {
+        return dispatch(commandBuilder.clientNoEvict(on));
+    }
+
+    @Override
     public RedisFuture<Long> clientId() {
         return dispatch(commandBuilder.clientId());
     }
@@ -352,6 +376,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<String> clusterAddSlotsRange(Range<Integer>... ranges) {
+        return dispatch(commandBuilder.clusterAddSlotsRange(ranges));
+    }
+
+    @Override
     public RedisFuture<String> clusterBumpepoch() {
         return dispatch(commandBuilder.clusterBumpepoch());
     }
@@ -369,6 +398,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @Override
     public RedisFuture<String> clusterDelSlots(int... slots) {
         return dispatch(commandBuilder.clusterDelslots(slots));
+    }
+
+    @Override
+    public RedisFuture<String> clusterDelSlotsRange(Range<Integer>... ranges) {
+        return dispatch(commandBuilder.clusterDelSlotsRange(ranges));
     }
 
     @Override
@@ -422,6 +456,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<List<String>> clusterReplicas(String nodeId) {
+        return dispatch(commandBuilder.clusterReplicas(nodeId));
+    }
+
+    @Override
     public RedisFuture<String> clusterReset(boolean hard) {
         return dispatch(commandBuilder.clusterReset(hard));
     }
@@ -454,6 +493,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @Override
     public RedisFuture<String> clusterSetSlotStable(int slot) {
         return dispatch(commandBuilder.clusterSetSlotStable(slot));
+    }
+
+    @Override
+    public RedisFuture<List<Object>> clusterShards() {
+        return dispatch(commandBuilder.clusterShards());
     }
 
     @Override
@@ -497,6 +541,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<Map<String, String>> configGet(String... parameters) {
+        return dispatch(commandBuilder.configGet(parameters));
+    }
+
+    @Override
     public RedisFuture<String> configResetstat() {
         return dispatch(commandBuilder.configResetstat());
     }
@@ -509,6 +558,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @Override
     public RedisFuture<String> configSet(String parameter, String value) {
         return dispatch(commandBuilder.configSet(parameter, value));
+    }
+
+    @Override
+    public RedisFuture<String> configSet(Map<String, String> kvs) {
+        return dispatch(commandBuilder.configSet(kvs));
     }
 
     @Override
@@ -659,6 +713,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public <T> RedisFuture<T> evalReadOnly(byte[] script, ScriptOutputType type, K[] keys, V... values) {
+        return (RedisFuture<T>) dispatch(commandBuilder.eval(script, type, true, keys, values));
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public <T> RedisFuture<T> evalsha(String digest, ScriptOutputType type, K... keys) {
         return (RedisFuture<T>) dispatch(commandBuilder.evalsha(digest, type, keys));
@@ -668,6 +727,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @SuppressWarnings("unchecked")
     public <T> RedisFuture<T> evalsha(String digest, ScriptOutputType type, K[] keys, V... values) {
         return (RedisFuture<T>) dispatch(commandBuilder.evalsha(digest, type, keys, values));
+    }
+
+    @Override
+    public <T> RedisFuture<T> evalshaReadOnly(String digest, ScriptOutputType type, K[] keys, V... values) {
+        return dispatch(commandBuilder.evalsha(digest, type, true, keys, values));
     }
 
     @Override
@@ -686,30 +750,60 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
 
     @Override
     public RedisFuture<Boolean> expire(K key, long seconds) {
-        return dispatch(commandBuilder.expire(key, seconds));
+        return expire(key, seconds, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> expire(K key, long seconds, ExpireArgs expireArgs) {
+        return dispatch(commandBuilder.expire(key, seconds, expireArgs));
     }
 
     @Override
     public RedisFuture<Boolean> expire(K key, Duration seconds) {
+        return expire(key, seconds, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> expire(K key, Duration seconds, ExpireArgs expireArgs) {
         LettuceAssert.notNull(seconds, "Timeout must not be null");
-        return expire(key, seconds.toMillis() / 1000);
+        return expire(key, seconds.toMillis() / 1000, expireArgs);
     }
 
     @Override
     public RedisFuture<Boolean> expireat(K key, long timestamp) {
-        return dispatch(commandBuilder.expireat(key, timestamp));
+        return expireat(key, timestamp, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> expireat(K key, long timestamp, ExpireArgs expireArgs) {
+        return dispatch(commandBuilder.expireat(key, timestamp, expireArgs));
     }
 
     @Override
     public RedisFuture<Boolean> expireat(K key, Date timestamp) {
+        return expireat(key, timestamp, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> expireat(K key, Date timestamp, ExpireArgs expireArgs) {
         LettuceAssert.notNull(timestamp, "Timestamp must not be null");
-        return expireat(key, timestamp.getTime() / 1000);
+        return expireat(key, timestamp.getTime() / 1000, expireArgs);
     }
 
     @Override
     public RedisFuture<Boolean> expireat(K key, Instant timestamp) {
+        return expireat(key, timestamp, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> expireat(K key, Instant timestamp, ExpireArgs expireArgs) {
         LettuceAssert.notNull(timestamp, "Timestamp must not be null");
-        return expireat(key, timestamp.toEpochMilli() / 1000);
+        return expireat(key, timestamp.toEpochMilli() / 1000, expireArgs);
+    }
+
+    @Override
+    public RedisFuture<Long> expiretime(K key) {
+        return dispatch(commandBuilder.expiretime(key));
     }
 
     @Override
@@ -1127,6 +1221,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<KeyValue<K, List<V>>> lmpop(LMPopArgs args, K... keys) {
+        return dispatch(commandBuilder.lmpop(args, keys));
+    }
+
+    @Override
     public RedisFuture<Long> lpos(K key, V value) {
         return lpos(key, value, null);
     }
@@ -1261,30 +1360,60 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
 
     @Override
     public RedisFuture<Boolean> pexpire(K key, long milliseconds) {
-        return dispatch(commandBuilder.pexpire(key, milliseconds));
+        return pexpire(key, milliseconds, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> pexpire(K key, long milliseconds, ExpireArgs expireArgs) {
+        return dispatch(commandBuilder.pexpire(key, milliseconds, expireArgs));
     }
 
     @Override
     public RedisFuture<Boolean> pexpire(K key, Duration milliseconds) {
+        return pexpire(key, milliseconds, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> pexpire(K key, Duration milliseconds, ExpireArgs expireArgs) {
         LettuceAssert.notNull(milliseconds, "Timeout must not be null");
-        return pexpire(key, milliseconds.toMillis());
+        return pexpire(key, milliseconds.toMillis(), expireArgs);
     }
 
     @Override
     public RedisFuture<Boolean> pexpireat(K key, Date timestamp) {
+        return pexpireat(key, timestamp, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> pexpireat(K key, Date timestamp, ExpireArgs expireArgs) {
         LettuceAssert.notNull(timestamp, "Timestamp must not be null");
-        return pexpireat(key, timestamp.getTime());
+        return pexpireat(key, timestamp.getTime(), expireArgs);
     }
 
     @Override
     public RedisFuture<Boolean> pexpireat(K key, Instant timestamp) {
+        return pexpireat(key, timestamp, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> pexpireat(K key, Instant timestamp, ExpireArgs expireArgs) {
         LettuceAssert.notNull(timestamp, "Timestamp must not be null");
-        return pexpireat(key, timestamp.toEpochMilli());
+        return pexpireat(key, timestamp.toEpochMilli(), expireArgs);
     }
 
     @Override
     public RedisFuture<Boolean> pexpireat(K key, long timestamp) {
-        return dispatch(commandBuilder.pexpireat(key, timestamp));
+        return pexpireat(key, timestamp, null);
+    }
+
+    @Override
+    public RedisFuture<Boolean> pexpireat(K key, long timestamp, ExpireArgs expireArgs) {
+        return dispatch(commandBuilder.pexpireat(key, timestamp, expireArgs));
+    }
+
+    @Override
+    public RedisFuture<Long> pexpiretime(K key) {
+        return dispatch(commandBuilder.pexpiretime(key));
     }
 
     @Override
@@ -1370,6 +1499,16 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @Override
     public RedisFuture<Boolean> renamenx(K key, K newKey) {
         return dispatch(commandBuilder.renamenx(key, newKey));
+    }
+
+    @Override
+    public RedisFuture<String> replicaof(String host, int port) {
+        return dispatch(commandBuilder.replicaof(host, port));
+    }
+
+    @Override
+    public RedisFuture<String> replicaofNoOne() {
+        return dispatch(commandBuilder.replicaofNoOne());
     }
 
     @Override
@@ -1546,6 +1685,7 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
         connection.setAutoFlushCommands(autoFlush);
     }
 
+    @Override
     public void setTimeout(Duration timeout) {
         connection.setTimeout(timeout);
     }
@@ -1576,6 +1716,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public void shutdown(ShutdownArgs args) {
+        dispatch(commandBuilder.shutdown(args));
+    }
+
+    @Override
     public RedisFuture<Set<V>> sinter(K... keys) {
         return dispatch(commandBuilder.sinter(keys));
     }
@@ -1583,6 +1728,16 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @Override
     public RedisFuture<Long> sinter(ValueStreamingChannel<V> channel, K... keys) {
         return dispatch(commandBuilder.sinter(channel, keys));
+    }
+
+    @Override
+    public RedisFuture<Long> sintercard(K... keys) {
+        return dispatch(commandBuilder.sintercard(keys));
+    }
+
+    @Override
+    public RedisFuture<Long> sintercard(long limit, K... keys) {
+        return dispatch(commandBuilder.sintercard(limit, keys));
     }
 
     @Override
@@ -1662,7 +1817,27 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
 
     @Override
     public RedisFuture<Long> sort(ValueStreamingChannel<V> channel, K key, SortArgs sortArgs) {
-        return dispatch(commandBuilder.sort(channel, key, sortArgs));
+        return dispatch(commandBuilder.sortReadOnly(channel, key, sortArgs));
+    }
+
+    @Override
+    public RedisFuture<List<V>> sortReadOnly(K key) {
+        return dispatch(commandBuilder.sortReadOnly(key));
+    }
+
+    @Override
+    public RedisFuture<Long> sortReadOnly(ValueStreamingChannel<V> channel, K key) {
+        return dispatch(commandBuilder.sortReadOnly(channel, key));
+    }
+
+    @Override
+    public RedisFuture<List<V>> sortReadOnly(K key, SortArgs sortArgs) {
+        return dispatch(commandBuilder.sortReadOnly(key, sortArgs));
+    }
+
+    @Override
+    public RedisFuture<Long> sortReadOnly(ValueStreamingChannel<V> channel, K key, SortArgs sortArgs) {
+        return dispatch(commandBuilder.sortReadOnly(channel, key, sortArgs));
     }
 
     @Override
@@ -2110,6 +2285,16 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<Long> zintercard(K... keys) {
+        return dispatch(commandBuilder.zintercard(keys));
+    }
+
+    @Override
+    public RedisFuture<Long> zintercard(long limit, K... keys) {
+        return dispatch(commandBuilder.zintercard(limit, keys));
+    }
+
+    @Override
     public RedisFuture<List<ScoredValue<V>>> zinterWithScores(K... keys) {
         return dispatch(commandBuilder.zinterWithScores(keys));
     }
@@ -2352,6 +2537,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     }
 
     @Override
+    public RedisFuture<Long> zrangestore(K dstKey, K srcKey, Range<Long> range) {
+        return dispatch(commandBuilder.zrangestore(dstKey, srcKey, range, false));
+    }
+
+    @Override
     public RedisFuture<Long> zrangestorebylex(K dstKey, K srcKey, Range<? extends V> range, Limit limit) {
         return dispatch(commandBuilder.zrangestorebylex(dstKey, srcKey, range, limit, false));
     }
@@ -2419,6 +2609,11 @@ public abstract class AbstractRedisAsyncCommands<K, V> implements RedisAclAsyncC
     @Override
     public RedisFuture<Long> zrevrangeWithScores(ScoredValueStreamingChannel<V> channel, K key, long start, long stop) {
         return dispatch(commandBuilder.zrevrangeWithScores(channel, key, start, stop));
+    }
+
+    @Override
+    public RedisFuture<Long> zrevrangestore(K dstKey, K srcKey, Range<Long> range) {
+        return dispatch(commandBuilder.zrangestore(dstKey, srcKey, range, true));
     }
 
     @Override

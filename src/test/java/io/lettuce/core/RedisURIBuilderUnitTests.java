@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,7 @@
  */
 package io.lettuce.core;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,8 +42,8 @@ class RedisURIBuilderUnitTests {
 
     @Test
     void sentinelWithHostShouldFail() {
-        assertThatThrownBy(() -> RedisURI.Builder.sentinel("localhost").withHost("localhost")).isInstanceOf(
-                IllegalStateException.class);
+        assertThatThrownBy(() -> RedisURI.Builder.sentinel("localhost").withHost("localhost"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -92,8 +91,8 @@ class RedisURIBuilderUnitTests {
 
     @Test
     void redisWithInvalidPort() {
-        assertThatThrownBy(() -> RedisURI.Builder.redis("localhost").withPort(65536)).isInstanceOf(
-                IllegalArgumentException.class);
+        assertThatThrownBy(() -> RedisURI.Builder.redis("localhost").withPort(65536))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -133,6 +132,17 @@ class RedisURIBuilderUnitTests {
         assertThat(result.getSentinels()).isEmpty();
         assertThat(result.getHost()).isEqualTo("localhost");
         assertThat(result.isSsl()).isTrue();
+        assertThat(result.isStartTls()).isTrue();
+    }
+
+    @Test
+    void redisWithSSLFromUri() {
+        RedisURI template = RedisURI.Builder.redis("localhost").withSsl(true).withVerifyPeer(SslVerifyMode.CA)
+                .withStartTls(true).build();
+        RedisURI result = RedisURI.builder().withHost("localhost").withSsl(template).build();
+
+        assertThat(result.isSsl()).isTrue();
+        assertThat(result.getVerifyMode()).isEqualTo(SslVerifyMode.CA);
         assertThat(result.isStartTls()).isTrue();
     }
 
@@ -301,6 +311,18 @@ class RedisURIBuilderUnitTests {
 
         assertThat(target.getUsername()).isEqualTo("foo");
         assertThat(target.getPassword()).isEqualTo("bar".toCharArray());
+
+        RedisCredentialsProvider provider = RedisCredentialsProvider
+                .from(() -> RedisCredentials.just("suppliedUsername", "suppliedPassword".toCharArray()));
+
+        RedisURI sourceCp = new RedisURI();
+        sourceCp.setCredentialsProvider(provider);
+
+        RedisURI targetCp = RedisURI.builder().withHost("localhost").withAuthentication(sourceCp).build();
+
+        assertThat(targetCp.getUsername()).isNull();
+        assertThat(targetCp.getPassword()).isNull();
+        assertThat(sourceCp.getCredentialsProvider()).isEqualTo(targetCp.getCredentialsProvider());
     }
 
     @Test
@@ -345,4 +367,5 @@ class RedisURIBuilderUnitTests {
 
         assertThat(target.getSocket()).isEqualTo(source.getSocket());
     }
+
 }

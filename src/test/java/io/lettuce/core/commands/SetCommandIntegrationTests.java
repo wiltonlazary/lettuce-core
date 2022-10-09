@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,6 +103,14 @@ public class SetCommandIntegrationTests extends TestSupport {
     void sinter() {
         setupSet();
         assertThat(redis.sinter("key1", "key2", "key3")).isEqualTo(set("c"));
+    }
+
+    @Test
+    @EnabledOnCommand("SINTERCARD") // Redis 7.0
+    void sintercard() {
+        setupSet();
+        assertThat(redis.sintercard("key1", "key3")).isEqualTo(2);
+        assertThat(redis.sintercard(1, "key1", "key3")).isEqualTo(1);
     }
 
     @Test

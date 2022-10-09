@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,15 @@
  */
 package io.lettuce.core.masterreplica;
 
-import static io.lettuce.core.masterreplica.ReplicaUtils.findNodeByHostAndPort;
+import static io.lettuce.core.masterreplica.ReplicaUtils.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +32,12 @@ import java.util.function.Function;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import io.lettuce.core.*;
+import io.lettuce.core.ConnectionFuture;
+import io.lettuce.core.OrderingReadFromAccessor;
+import io.lettuce.core.ReadFrom;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisException;
+import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.cluster.models.partitions.Partitions;
@@ -34,6 +45,7 @@ import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.internal.AsyncConnectionProvider;
 import io.lettuce.core.internal.Exceptions;
 import io.lettuce.core.models.role.RedisNodeDescription;
+import io.lettuce.core.protocol.ConnectionIntent;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -77,14 +89,14 @@ class MasterReplicaConnectionProvider<K, V> {
     }
 
     /**
-     * Retrieve a {@link StatefulRedisConnection} by the intent. {@link MasterReplicaConnectionProvider.Intent#WRITE} intentions
-     * use the master connection, {@link MasterReplicaConnectionProvider.Intent#READ} intentions lookup one or more read
-     * candidates using the {@link ReadFrom} setting.
+     * Retrieve a {@link StatefulRedisConnection} by the intent. {@link ConnectionIntent#WRITE} intentions use the master
+     * connection, {@link ConnectionIntent#READ} intentions lookup one or more read candidates using the {@link ReadFrom}
+     * setting.
      *
      * @param intent command intent
      * @return the connection.
      */
-    public StatefulRedisConnection<K, V> getConnection(Intent intent) {
+    public StatefulRedisConnection<K, V> getConnection(ConnectionIntent intent) {
 
         if (debugEnabled) {
             logger.debug("getConnection(" + intent + ")");
@@ -98,21 +110,21 @@ class MasterReplicaConnectionProvider<K, V> {
     }
 
     /**
-     * Retrieve a {@link StatefulRedisConnection} by the intent. {@link MasterReplicaConnectionProvider.Intent#WRITE} intentions
-     * use the master connection, {@link MasterReplicaConnectionProvider.Intent#READ} intentions lookup one or more read
-     * candidates using the {@link ReadFrom} setting.
+     * Retrieve a {@link StatefulRedisConnection} by the intent. {@link ConnectionIntent#WRITE} intentions use the master
+     * connection, {@link ConnectionIntent#READ} intentions lookup one or more read candidates using the {@link ReadFrom}
+     * setting.
      *
      * @param intent command intent
      * @return the connection.
      * @throws RedisException if the host is not part of the cluster
      */
-    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(Intent intent) {
+    public CompletableFuture<StatefulRedisConnection<K, V>> getConnectionAsync(ConnectionIntent intent) {
 
         if (debugEnabled) {
             logger.debug("getConnectionAsync(" + intent + ")");
         }
 
-        if (readFrom != null && intent == Intent.READ) {
+        if (readFrom != null && intent == ConnectionIntent.READ) {
             List<RedisNodeDescription> selection = readFrom.select(new ReadFrom.Nodes() {
 
                 @Override
@@ -144,7 +156,7 @@ class MasterReplicaConnectionProvider<K, V> {
                     return connections.filter(StatefulConnection::isOpen).next().switchIfEmpty(connections.next()).toFuture();
                 }
 
-                return connections.filter(StatefulConnection::isOpen).collectList().map(it -> {
+                return connections.filter(StatefulConnection::isOpen).collectList().filter(it -> !it.isEmpty()).map(it -> {
                     int index = ThreadLocalRandom.current().nextInt(it.size());
                     return it.get(index);
                 }).switchIfEmpty(connections.next()).toFuture();
@@ -378,10 +390,6 @@ class MasterReplicaConnectionProvider<K, V> {
             return result;
         }
 
-    }
-
-    enum Intent {
-        READ, WRITE;
     }
 
 }

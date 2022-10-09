@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,15 +24,14 @@ import io.lettuce.core.protocol.ProtocolVersion;
  * and connection state restoration. This class is part of the internal API.
  *
  * @author Mark Paluch
+ * @author Jon Iantosca
  * @since 6.0
  */
 public class ConnectionState {
 
     private volatile HandshakeResponse handshakeResponse;
 
-    private volatile String username;
-
-    private volatile char[] password;
+    private volatile RedisCredentialsProvider credentialsProvider;
 
     private volatile int db;
 
@@ -48,8 +47,7 @@ public class ConnectionState {
     public void apply(RedisURI redisURI) {
 
         setClientName(redisURI.getClientName());
-        setUsername(redisURI.getUsername());
-        setPassword(redisURI.getPassword());
+        setCredentialsProvider(redisURI.getCredentialsProvider());
     }
 
     /**
@@ -113,36 +111,18 @@ public class ConnectionState {
         }
 
         if (args.size() > 1) {
-            setUsername(new String(args.get(0)));
-            setPassword(args.get(1));
+            this.credentialsProvider = new StaticCredentialsProvider(new String(args.get(0)), args.get(1));
         } else {
-            setUsername(null);
-            setPassword(args.get(0));
+            this.credentialsProvider = new StaticCredentialsProvider(null, args.get(0));
         }
     }
 
-    protected void setUsername(String username) {
-        this.username = username;
+    protected void setCredentialsProvider(RedisCredentialsProvider credentialsProvider) {
+        this.credentialsProvider = credentialsProvider;
     }
 
-    String getUsername() {
-        return username;
-    }
-
-    protected void setPassword(char[] password) {
-        this.password = password;
-    }
-
-    char[] getPassword() {
-        return password;
-    }
-
-    boolean hasPassword() {
-        return this.password != null && this.password.length > 0;
-    }
-
-    boolean hasUsername() {
-        return this.username != null && !this.username.isEmpty();
+    public RedisCredentialsProvider getCredentialsProvider() {
+        return credentialsProvider;
     }
 
     protected void setDb(int db) {

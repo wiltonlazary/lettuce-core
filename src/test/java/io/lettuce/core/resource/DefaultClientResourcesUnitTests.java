@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 the original author or authors.
+ * Copyright 2011-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.lettuce.test.Wait;
 import org.junit.jupiter.api.Test;
 
 import reactor.test.StepVerifier;
@@ -31,6 +30,7 @@ import io.lettuce.core.event.EventBus;
 import io.lettuce.core.metrics.CommandLatencyCollector;
 import io.lettuce.core.metrics.DefaultCommandLatencyCollectorOptions;
 import io.lettuce.test.TestFutures;
+import io.lettuce.test.Wait;
 import io.lettuce.test.resource.FastShutdown;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.resolver.AddressResolverGroup;
@@ -130,9 +130,9 @@ class DefaultClientResourcesUnitTests {
 
         assertThat(TestFutures.getOrTimeout(sut.shutdown())).isTrue();
 
-        verifyZeroInteractions(executorMock);
-        verifyZeroInteractions(groupProviderMock);
-        verifyZeroInteractions(timerMock);
+        verifyNoMoreInteractions(executorMock);
+        verifyNoMoreInteractions(groupProviderMock);
+        verifyNoMoreInteractions(timerMock);
         verify(latencyCollectorMock).isEnabled();
         verifyNoMoreInteractions(latencyCollectorMock);
     }
@@ -163,10 +163,12 @@ class DefaultClientResourcesUnitTests {
         assertThat(sut.addressResolverGroup()).isSameAs(addressResolverGroupMock);
 
         assertThat(TestFutures.getOrTimeout(sut.shutdown())).isTrue();
+        assertThat(sut).hasFieldOrPropertyWithValue("shutdownCheck", false);
+        assertThat(copy).hasFieldOrPropertyWithValue("shutdownCheck", true);
 
-        verifyZeroInteractions(executorMock);
-        verifyZeroInteractions(groupProviderMock);
-        verifyZeroInteractions(timerMock);
+        verifyNoMoreInteractions(executorMock);
+        verifyNoMoreInteractions(groupProviderMock);
+        verifyNoMoreInteractions(timerMock);
     }
 
     @Test
